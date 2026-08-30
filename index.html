@@ -1706,16 +1706,16 @@ FEATURES.forEach((f, i) => FEATURE_IDX[f.key] = i);
 
 // ------------------- prediction -------------------
 function treeScore(map, tree, x) {
-  if (tree.leaf !== undefined) return tree.leaf;
+  if (tree.leaf !== undefined) return Math.fround(tree.leaf);
   const v = x[tree.split];
   let next;
   if (v === null || v === undefined || Number.isNaN(v)) next = tree.missing;
-  else next = (v < tree.split_condition) ? tree.yes : tree.no;
+  else next = (Math.fround(v) < Math.fround(tree.split_condition)) ? tree.yes : tree.no;
   return treeScore(map, map.get(next), x);
 }
 function predict(x) {
   let s = 0;
-  for (let i = 0; i < MODEL.length; i++) s += treeScore(TREE_MAPS[i], MODEL[i], x);
+  for (let i = 0; i < MODEL.length; i++) s = Math.fround(s + treeScore(TREE_MAPS[i], MODEL[i], x));
   const logit = s + BASE_LOGIT;
   return { logit: logit, prob: 1 / (1 + Math.exp(-logit)) };
 }
@@ -1778,18 +1778,18 @@ function treeShap(tree, map, xv) {
       for (let i = 1; i <= u; i++) {
         const w = unwoundPathSum(path, u, i);
         const el = path[i];
-        phi[el.featureIndex] += w * (el.oneFraction - el.zeroFraction) * node.leaf * condFrac;
+        phi[el.featureIndex] += w * (el.oneFraction - el.zeroFraction) * Math.fround(node.leaf) * condFrac;
       }
       return;
     }
     const v = xv[FEATURE_IDX[node.split]];
     let hot;
     if (v === null || v === undefined || Number.isNaN(v)) hot = node.missing;
-    else hot = (v < node.split_condition) ? node.yes : node.no;
+    else hot = (Math.fround(v) < Math.fround(node.split_condition)) ? node.yes : node.no;
     const cold = (hot === node.yes) ? node.no : node.yes;
-    const w = node.cover;
-    const hzf = map.get(hot).cover / w;
-    const czf = map.get(cold).cover / w;
+    const w = Math.fround(node.cover);
+    const hzf = Math.fround(map.get(hot).cover) / w;
+    const czf = Math.fround(map.get(cold).cover) / w;
     let iz = 1, io = 1, pi = 0;
     for (; pi <= u; ++pi) if (path[pi].featureIndex === FEATURE_IDX[node.split]) break;
     if (pi !== u + 1) {
