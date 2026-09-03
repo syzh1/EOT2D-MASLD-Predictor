@@ -23,7 +23,9 @@ The calculator is powered by a 12-variable extreme gradient boosting (XGB) model
 
 For each patient, the tool returns the predicted probability of MASLD, a risk stratification (low / moderate / high), the model decision at the Youden-optimised cutoff (0.668), and per-variable SHAP contributions.
 
-Internal test performance: AUROC 0.759 (n = 397).
+Internal test performance (pooled across five imputations): AUROC 0.773 (95% CI 0.721-0.824, n = 397).
+External validation (independent cohort): AUROC 0.753 (95% CI 0.708-0.797, n = 515).
+Baseline E[f(x)] = 0.7794 (log-odds).
 
 ## Usage
 
