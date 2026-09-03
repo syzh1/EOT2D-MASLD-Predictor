@@ -128,11 +128,11 @@
             <div>
               <div class="note">Model decision &middot; Youden cutoff = 0.668</div>
               <div class="decision" id="decision">&ndash;</div>
-              <div class="decision sub" id="decisionSub">Internal test AUROC = 0.759 (n = 397)</div>
+              <div class="decision sub" id="decisionSub">Internal test AUROC = 0.773 (n = 397)</div>
             </div>
           </div>
           <div class="divider"></div>
-          <div class="shap-note"><b>Feature contributions (SHAP, log-odds)</b> &mdash; red bars push the prediction toward MASLD; blue bars push it away. Baseline E[f(x)] = 0.78.</div>
+          <div class="shap-note"><b>Feature contributions (SHAP, log-odds)</b> &mdash; red bars push the prediction toward MASLD; blue bars push it away. Baseline E[f(x)] = 0.7794.</div>
           <div id="shapChart"></div>
           <div class="legend">
             <span><span class="sw pos"></span>Increases risk</span>
@@ -141,7 +141,7 @@
           <div class="baseline-box" id="baselineBox"></div>
         </div>
         <div class="foot">
-          Model: XGB (12 variables) &middot; Youden cutoff 0.668 &middot; Internal test AUROC 0.759 (95% CI 0.71&ndash;0.81) &middot; Baseline log-odds 0.78.
+          Model: XGB (12 variables) &middot; Youden cutoff 0.668 &middot; Internal test AUROC 0.773 (95% CI 0.721&ndash;0.824) &middot; Baseline log-odds 0.7794.
           For research purposes only &mdash; not a substitute for clinical judgement.
         </div>
       </div>
@@ -1899,8 +1899,8 @@ function calculate() {
   document.getElementById('shapChart').innerHTML = html || '<div class="note">No contributions</div>';
   const sumPhi = phi.reduce((a, b) => a + b, 0);
   document.getElementById('baselineBox').innerHTML =
-    '\u03a3 SHAP = <b>' + sumPhi.toFixed(3) + '</b> + baseline ' + BIAS_SHOW.toFixed(3)
-    + ' = log-odds <b>' + (sumPhi + BIAS_SHOW).toFixed(3) + '</b>'
+    '\u03a3 SHAP = <b>' + sumPhi.toFixed(4) + '</b> + baseline ' + BIAS_SHOW.toFixed(4)
+    + ' = log-odds <b>' + (sumPhi + BIAS_SHOW).toFixed(4) + '</b>'
     + ' &rarr; probability <b>' + (100 / (1 + Math.exp(-(sumPhi + BIAS_SHOW)))).toFixed(1) + '%</b>'
     + ' <span style="color:var(--muted)">(rounded)</span>';
 }
