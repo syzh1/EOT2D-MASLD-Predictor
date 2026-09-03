@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MASLD Risk Calculator (EOT2D)</title>
+<style>
+  :root{
+    --navy:#1F4E79;
+    --teal:#117A65;
+    --ink:#2C3E50;
+    --muted:#6B7A8F;
+    --bg:#F4F7FB;
+    --card:#FFFFFF;
+    --line:#E3E9F0;
+    --pos:#C0392B;
+    --neg:#4662B3;
+    --low:#1E8449;
+    --mod:#B9770E;
+    --high:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size:14px; line-height:1.45;
+  }
+  .header{
+    background:linear-gradient(100deg,#16324F 0%,#1F4E79 45%,#117A65 100%);
+    color:#fff; padding:20px 28px 18px;
+  }
+  .header h1{margin:0; font-size:22px; font-weight:700; letter-spacing:.2px;}
+  .header .sub{margin-top:5px; font-size:13px; opacity:.92;}
+  .accent{height:4px; background:linear-gradient(90deg,#8D5524,#E07B39,#7FB3D5,#27AE60);}
+  .wrap{max-width:1180px; margin:0 auto; padding:22px 18px 36px;}
+  .layout{display:grid; grid-template-columns:360px 1fr; gap:20px; align-items:start;}
+  @media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 1px 3px rgba(31,78,121,.08);
+    padding:18px 20px;
+  }
+  .card + .card{margin-top:16px;}
+  .card h2{
+    margin:0 0 12px; font-size:14px; font-weight:700; color:var(--navy);
+    text-transform:uppercase; letter-spacing:.6px;
+  }
+  .grp{margin-bottom:14px;}
+  .grp-title{font-size:12px; font-weight:700; color:var(--muted); margin:16px 0 8px; letter-spacing:.4px;}
+  .grp-title:first-child{margin-top:0;}
+  .field{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0;}
+  .field label{font-size:13px; color:var(--ink);}
+  .field .unit{color:var(--muted); font-size:11.5px; margin-left:4px;}
+  .field input[type=number], .field select{
+    width:118px; padding:6px 8px; font-size:13px;
+    border:1px solid #C9D4E0; border-radius:6px; background:#FBFCFE;
+    color:var(--ink); outline:none; text-align:right;
+  }
+  .field input:focus, .field select:focus{border-color:var(--navy); box-shadow:0 0 0 2px rgba(31,78,121,.12);}
+  .examples{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  .btn{
+    border:1px solid var(--navy); color:var(--navy); background:#fff;
+    border-radius:6px; padding:6px 12px; font-size:12.5px; cursor:pointer;
+  }
+  .btn:hover{background:#EDF3FA;}
+  .result-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:600px){ .result-grid{grid-template-columns:1fr;} }
+  .prob-num{font-size:46px; font-weight:700; text-align:center; margin:10px 0 4px; color:var(--navy);}
+  .risk-label{font-size:17px; text-align:center; font-weight:600;}
+  .decision{font-size:24px; font-weight:700; text-align:center; margin:12px 0 4px;}
+  .decision.sub{font-size:12px; color:var(--muted); font-weight:400; margin-top:6px;}
+  .note{font-size:11.5px; color:var(--muted); text-align:center; margin-top:8px;}
+  .divider{height:1px; background:var(--line); margin:16px 0;}
+  .shap-note{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .shap-row{display:grid; grid-template-columns:130px 1fr 74px; align-items:center; gap:10px; margin:6px 0;}
+  .shap-label{font-size:12.5px; color:var(--ink); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .shap-track{position:relative; height:20px; background:#F0F3F8; border-radius:4px; overflow:hidden;}
+  .shap-bar{position:absolute; top:0; height:100%; border-radius:4px 0 0 4px;}
+  .shap-bar.pos{left:50%; border-radius:0 4px 4px 0; background:linear-gradient(90deg,#E74C3C,#C0392B);}
+  .shap-bar.neg{right:50%; background:linear-gradient(90deg,#5D7CC4,#4662B3);}
+  .shap-zero{position:absolute; left:50%; top:0; bottom:0; width:1px; background:#B9C6D4;}
+  .shap-val{font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink); text-align:right;}
+  .legend{display:flex; gap:16px; margin-top:10px; font-size:12px; color:var(--muted);}
+  .legend .sw{display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+  .legend .sw.pos{background:#C0392B;} .legend .sw.neg{background:#4662B3;}
+  .baseline-box{
+    background:#F6F9FC; border:1px dashed #C9D4E0; border-radius:8px;
+    padding:10px 14px; font-size:12.5px; color:var(--ink); margin-top:12px;
+  }
+  .baseline-box b{color:var(--navy);}
+  .warn{color:var(--high); font-size:12.5px; margin-top:8px;}
+  .foot{margin-top:22px; font-size:11.5px; color:var(--muted); line-height:1.6;}
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>MASLD Risk Calculator · Early-Onset Type 2 Diabetes</h1>
+    <div class="sub">12-variable extreme gradient boosting (XGB) model &mdash; probability of metabolic dysfunction-associated steatotic liver disease (MASLD)</div>
+  </div>
+  <div class="accent"></div>
+
+  <div class="wrap">
+    <div class="layout">
+      <div>
+        <div class="card">
+          <h2>Patient Inputs</h2>
+          <div id="inputs"></div>
+          <div class="examples">
+            <button class="btn" id="btnHigh" type="button">Load high-risk example</button>
+            <button class="btn" id="btnLow" type="button">Load low-risk example</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Prediction</h2>
+          <div class="result-grid">
+            <div>
+              <div class="note">Estimated probability of MASLD</div>
+              <div class="prob-num" id="probNum">&ndash;</div>
+              <div class="risk-label" id="riskLabel">Enter values to calculate</div>
+            </div>
+            <div>
+              <div class="note">Model decision &middot; Youden cutoff = 0.668</div>
+              <div class="decision" id="decision">&ndash;</div>
+              <div class="decision sub" id="decisionSub">Internal test AUROC = 0.773 (n = 397)</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="shap-note"><b>Feature contributions (SHAP, log-odds)</b> &mdash; red bars push the prediction toward MASLD; blue bars push it away. Baseline E[f(x)] = 0.7794.</div>
+          <div id="shapChart"></div>
+          <div class="legend">
+            <span><span class="sw pos"></span>Increases risk</span>
+            <span><span class="sw neg"></span>Decreases risk</span>
+          </div>
+          <div class="baseline-box" id="baselineBox"></div>
+        </div>
+        <div class="foot">
+          Model: XGB (12 variables) &middot; Youden cutoff 0.668 &middot; Internal test AUROC 0.773 (95% CI 0.721&ndash;0.824) &middot; Baseline log-odds 0.7794.
+          For research purposes only &mdash; not a substitute for clinical judgement.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ---------------------------------------------------------------
+// Model: 91 XGBoost trees (binary:logistic), JSON dump with cover
+// ---------------------------------------------------------------
+const MODEL = [
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 35.2243462, "cover": 159.480087, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 5.30999994, "yes": 3, "no": 4, "missing": 4 , "gain": 27.8692436, "cover": 129.994568, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 40.7999992, "yes": 7, "no": 8, "missing": 8 , "gain": 12.4262161, "cover": 23.0288391, "children": [
+        { "nodeid": 7, "leaf": -0.157075658 , "cover": 17.6482697 }, 
+        { "nodeid": 8, "leaf": 0.0131310839 , "cover": 5.38056993 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 24.9699993, "yes": 9, "no": 10, "missing": 10 , "gain": 19.0999203, "cover": 106.965729, "children": [
+        { "nodeid": 9, "leaf": -0.099928163 , "cover": 15.0655956 }, 
+        { "nodeid": 10, "leaf": 0.0181595795 , "cover": 91.9001312 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 27.7000008, "yes": 5, "no": 6, "missing": 6 , "gain": 3.80592346, "cover": 29.4855232, "children": [
+      { "nodeid": 5, "leaf": 0.042599503 , "cover": 10.1154709 }, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 75, "yes": 11, "no": 12, "missing": 12 , "gain": 0.264108658, "cover": 19.3700504, "children": [
+        { "nodeid": 11, "leaf": 0.136088759 , "cover": 14.2047043 }, 
+        { "nodeid": 12, "leaf": 0.0733831301 , "cover": 5.1653471 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 34.3658791, "cover": 158.434967, "children": [
+    { "nodeid": 1, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 24.6946526, "cover": 129.815155, "children": [
+      { "nodeid": 3, "depth": 2, "split": "BMI", "split_condition": 25, "yes": 7, "no": 8, "missing": 8 , "gain": 29.3286152, "cover": 90.9557953, "children": [
+        { "nodeid": 7, "leaf": -0.178028077 , "cover": 14.9658813 }, 
+        { "nodeid": 8, "leaf": -0.0283538103 , "cover": 75.9899139 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 391, "yes": 9, "no": 10, "missing": 10 , "gain": 7.36818075, "cover": 38.8593559, "children": [
+        { "nodeid": 9, "leaf": -0.0109724188 , "cover": 16.4400635 }, 
+        { "nodeid": 10, "leaf": 0.0757745132 , "cover": 22.4192944 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 26.1200008, "yes": 5, "no": 6, "missing": 6 , "gain": 2.3126049, "cover": 28.6198177, "children": [
+      { "nodeid": 5, "leaf": 0.0354977697 , "cover": 6.8870616 }, 
+      { "nodeid": 6, "depth": 2, "split": "HDL-C", "split_condition": 1.13, "yes": 11, "no": 12, "missing": 12 , "gain": 1.40727043, "cover": 21.7327557, "children": [
+        { "nodeid": 11, "leaf": 0.126388192 , "cover": 15.2792482 }, 
+        { "nodeid": 12, "leaf": 0.0558792949 , "cover": 6.4535079 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.25, "yes": 1, "no": 2, "missing": 2 , "gain": 39.4865494, "cover": 161.188034, "children": [
+    { "nodeid": 1, "depth": 1, "split": "BMI", "split_condition": 23.1800003, "yes": 3, "no": 4, "missing": 4 , "gain": 17.291153, "cover": 118.774078, "children": [
+      { "nodeid": 3, "leaf": -0.12010286 , "cover": 6.82232666 }, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 52.9300003, "yes": 7, "no": 8, "missing": 8 , "gain": 14.778492, "cover": 111.951752, "children": [
+        { "nodeid": 7, "leaf": 0.0148118576 , "cover": 88.7287064 }, 
+        { "nodeid": 8, "leaf": 0.103173152 , "cover": 23.2230492 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 31, "yes": 5, "no": 6, "missing": 6 , "gain": 12.6222, "cover": 42.4139519, "children": [
+      { "nodeid": 5, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 9, "no": 10, "missing": 10 , "gain": 4.9016037, "cover": 22.4301052, "children": [
+        { "nodeid": 9, "leaf": -0.166806191 , "cover": 15.8132753 }, 
+        { "nodeid": 10, "leaf": -0.0537029803 , "cover": 6.61682987 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "HDL-C", "split_condition": 1.38999999, "yes": 11, "no": 12, "missing": 12 , "gain": 4.45389462, "cover": 19.9838467, "children": [
+        { "nodeid": 11, "leaf": 0.0157712474 , "cover": 10.8887062 }, 
+        { "nodeid": 12, "leaf": -0.075268954 , "cover": 9.0951395 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 27.9636173, "cover": 158.992905, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 29.8999996, "yes": 3, "no": 4, "missing": 4 , "gain": 19.3052387, "cover": 60.869648, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.98999977, "yes": 7, "no": 8, "missing": 8 , "gain": 11.5211639, "cover": 27.6300869, "children": [
+        { "nodeid": 7, "leaf": -0.170363903 , "cover": 14.2338219 }, 
+        { "nodeid": 8, "leaf": -0.0393743031 , "cover": 13.396265 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 337.5, "yes": 9, "no": 10, "missing": 10 , "gain": 11.9379377, "cover": 33.239563, "children": [
+        { "nodeid": 9, "leaf": -0.101662479 , "cover": 7.50969553 }, 
+        { "nodeid": 10, "leaf": 0.0343343131 , "cover": 25.729866 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 25, "yes": 5, "no": 6, "missing": 6 , "gain": 13.5591459, "cover": 98.1232605, "children": [
+      { "nodeid": 5, "depth": 2, "split": "ALT", "split_condition": 18.7999992, "yes": 11, "no": 12, "missing": 12 , "gain": 5.13220835, "cover": 12.1232233, "children": [
+        { "nodeid": 11, "leaf": 0.0160057899 , "cover": 5.05103588 }, 
+        { "nodeid": 12, "leaf": -0.109733798 , "cover": 7.07218742 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "ALT/AST", "split_condition": 0.806282699, "yes": 13, "no": 14, "missing": 14 , "gain": 12.1528893, "cover": 86.0000381, "children": [
+        { "nodeid": 13, "leaf": -0.0755027235 , "cover": 6.34467268 }, 
+        { "nodeid": 14, "leaf": 0.0601883605 , "cover": 79.655365 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 53.5, "yes": 1, "no": 2, "missing": 2 , "gain": 22.2485771, "cover": 160.041656, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 4.53999996, "yes": 3, "no": 4, "missing": 4 , "gain": 16.1504478, "cover": 133.389999, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 446.600006, "yes": 7, "no": 8, "missing": 8 , "gain": 4.75761795, "cover": 15.4221649, "children": [
+        { "nodeid": 7, "leaf": -0.148836032 , "cover": 10.1696138 }, 
+        { "nodeid": 8, "leaf": -0.0271955878 , "cover": 5.25255156 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 43.9000015, "yes": 9, "no": 10, "missing": 10 , "gain": 14.1922407, "cover": 117.967827, "children": [
+        { "nodeid": 9, "leaf": 0.0344697461 , "cover": 49.8527374 }, 
+        { "nodeid": 10, "leaf": -0.035138905 , "cover": 68.1150894 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 75, "yes": 5, "no": 6, "missing": 6 , "gain": 4.30213737, "cover": 26.6516571, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 62.0999985, "yes": 11, "no": 12, "missing": 12 , "gain": 1.89314079, "cover": 21.6416645, "children": [
+        { "nodeid": 11, "leaf": 0.0369253419 , "cover": 5.2999897 }, 
+        { "nodeid": 12, "leaf": 0.115046464 , "cover": 16.3416748 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.00336159766 , "cover": 5.00999165 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 21.7289352, "cover": 158.139771, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 1.25, "yes": 3, "no": 4, "missing": 4 , "gain": 10.4544754, "cover": 62.4878883, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 440, "yes": 7, "no": 8, "missing": 8 , "gain": 10.5990324, "cover": 42.5863533, "children": [
+        { "nodeid": 7, "leaf": -0.055749815 , "cover": 27.0631771 }, 
+        { "nodeid": 8, "leaf": 0.0453657173 , "cover": 15.5231762 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 8.30000019, "yes": 9, "no": 10, "missing": 10 , "gain": 7.32836723, "cover": 19.901535, "children": [
+        { "nodeid": 9, "leaf": -0.157143518 , "cover": 10.9810438 }, 
+        { "nodeid": 10, "leaf": -0.0327808857 , "cover": 8.92049217 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 72.6999969, "yes": 5, "no": 6, "missing": 6 , "gain": 10.5662689, "cover": 95.651886, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 7.51000023, "yes": 11, "no": 12, "missing": 12 , "gain": 12.5600414, "cover": 61.2666626, "children": [
+        { "nodeid": 11, "leaf": -0.00258749421 , "cover": 24.9189644 }, 
+        { "nodeid": 12, "leaf": 0.0889810473 , "cover": 36.3476982 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "GLO", "split_condition": 25.1499996, "yes": 13, "no": 14, "missing": 14 , "gain": 21.6162682, "cover": 34.3852234, "children": [
+        { "nodeid": 13, "leaf": -0.1891803 , "cover": 5.01802921 }, 
+        { "nodeid": 14, "leaf": 0.0183996893 , "cover": 29.3671932 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.24000001, "yes": 1, "no": 2, "missing": 2 , "gain": 22.3767662, "cover": 158.249298, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT/AST", "split_condition": 1.35677087, "yes": 3, "no": 4, "missing": 4 , "gain": 10.779788, "cover": 115.357216, "children": [
+      { "nodeid": 3, "depth": 2, "split": "是否饮酒", "split_condition": 1, "yes": 7, "no": 8, "missing": 8 , "gain": 10.1471539, "cover": 46.7756195, "children": [
+        { "nodeid": 7, "leaf": -0.0379265212 , "cover": 34.6286774 }, 
+        { "nodeid": 8, "leaf": 0.0649197996 , "cover": 12.1469412 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 24.3600006, "yes": 9, "no": 10, "missing": 10 , "gain": 12.6850071, "cover": 68.5815887, "children": [
+        { "nodeid": 9, "leaf": -0.0877181888 , "cover": 5.16341019 }, 
+        { "nodeid": 10, "leaf": 0.0639873669 , "cover": 63.4181824 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT/AST", "split_condition": 1.63999999, "yes": 5, "no": 6, "missing": 6 , "gain": 12.9783001, "cover": 42.8920898, "children": [
+      { "nodeid": 5, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 11, "no": 12, "missing": 12 , "gain": 3.71035767, "cover": 28.8245964, "children": [
+        { "nodeid": 11, "leaf": -0.119705044 , "cover": 19.138979 }, 
+        { "nodeid": 12, "leaf": -0.0387253799 , "cover": 9.68561745 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "IBIL", "split_condition": 9.34000015, "yes": 13, "no": 14, "missing": 14 , "gain": 4.17279625, "cover": 14.0674944, "children": [
+        { "nodeid": 13, "leaf": -0.0334369391 , "cover": 6.79986954 }, 
+        { "nodeid": 14, "leaf": 0.0690117404 , "cover": 7.26762438 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.25, "yes": 1, "no": 2, "missing": 2 , "gain": 17.6773834, "cover": 152.153732, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 52.9300003, "yes": 3, "no": 4, "missing": 4 , "gain": 11.4573498, "cover": 108.866478, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 43.9000015, "yes": 7, "no": 8, "missing": 8 , "gain": 13.0934839, "cover": 88.5080795, "children": [
+        { "nodeid": 7, "leaf": 0.052436512 , "cover": 39.2516403 }, 
+        { "nodeid": 8, "leaf": -0.024131719 , "cover": 49.2564392 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 26.7299995, "yes": 9, "no": 10, "missing": 10 , "gain": 2.46194267, "cover": 20.3583946, "children": [
+        { "nodeid": 9, "leaf": 0.0313976705 , "cover": 6.05778313 }, 
+        { "nodeid": 10, "leaf": 0.113637879 , "cover": 14.3006115 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 22, "yes": 5, "no": 6, "missing": 6 , "gain": 11.7115107, "cover": 43.2872581, "children": [
+      { "nodeid": 5, "leaf": -0.174885467 , "cover": 5.35299635 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT", "split_condition": 25.8999996, "yes": 11, "no": 12, "missing": 12 , "gain": 8.40467834, "cover": 37.9342613, "children": [
+        { "nodeid": 11, "leaf": -0.0830485076 , "cover": 14.8725824 }, 
+        { "nodeid": 12, "leaf": 0.0110917781 , "cover": 23.0616798 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "阿卡波糖片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 14.2440119, "cover": 157.773972, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 1.58000004, "yes": 3, "no": 4, "missing": 4 , "gain": 14.3203697, "cover": 98.8071213, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT/AST", "split_condition": 1.3525306, "yes": 7, "no": 8, "missing": 8 , "gain": 11.7650442, "cover": 88.4098053, "children": [
+        { "nodeid": 7, "leaf": -0.0565147698 , "cover": 34.8576965 }, 
+        { "nodeid": 8, "leaf": 0.0172715541 , "cover": 53.5521088 }
+      ]}, 
+      { "nodeid": 4, "leaf": -0.13142471 , "cover": 10.397315 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 28.5, "yes": 5, "no": 6, "missing": 6 , "gain": 6.14555788, "cover": 58.9668579, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 74.1600037, "yes": 9, "no": 10, "missing": 10 , "gain": 10.7227297, "cover": 38.5974884, "children": [
+        { "nodeid": 9, "leaf": 0.0334430598 , "cover": 33.2759666 }, 
+        { "nodeid": 10, "leaf": -0.108385697 , "cover": 5.32152319 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "IBIL", "split_condition": 6.17999983, "yes": 11, "no": 12, "missing": 12 , "gain": 1.60383797, "cover": 20.3693695, "children": [
+        { "nodeid": 11, "leaf": 0.0318599753 , "cover": 6.650105 }, 
+        { "nodeid": 12, "leaf": 0.0979394242 , "cover": 13.719265 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 21.1607494, "cover": 152.836105, "children": [
+    { "nodeid": 1, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 18.5308342, "cover": 127.720917, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7, "yes": 7, "no": 8, "missing": 8 , "gain": 11.9242821, "cover": 92.6206818, "children": [
+        { "nodeid": 7, "leaf": -0.0907150954 , "cover": 34.1330414 }, 
+        { "nodeid": 8, "leaf": -0.0166361406 , "cover": 58.4876404 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 464, "yes": 9, "no": 10, "missing": 10 , "gain": 6.07040215, "cover": 35.1002388, "children": [
+        { "nodeid": 9, "leaf": 0.0114058107 , "cover": 24.6629066 }, 
+        { "nodeid": 10, "leaf": 0.100107767 , "cover": 10.4373322 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 21.2999992, "yes": 5, "no": 6, "missing": 6 , "gain": 2.19648457, "cover": 25.115181, "children": [
+      { "nodeid": 5, "leaf": 0.0156198172 , "cover": 5.16327763 }, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 75, "yes": 11, "no": 12, "missing": 12 , "gain": 1.01251984, "cover": 19.9519024, "children": [
+        { "nodeid": 11, "leaf": 0.107182004 , "cover": 14.0835409 }, 
+        { "nodeid": 12, "leaf": 0.0450923741 , "cover": 5.8683629 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 14.9743528, "cover": 153.808594, "children": [
+    { "nodeid": 1, "leaf": -0.132566422 , "cover": 6.96814537 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 31, "yes": 3, "no": 4, "missing": 4 , "gain": 15.0604782, "cover": 146.840454, "children": [
+      { "nodeid": 3, "depth": 2, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 7.44043493, "cover": 66.9483871, "children": [
+        { "nodeid": 5, "leaf": -0.0647589564 , "cover": 28.1692715 }, 
+        { "nodeid": 6, "leaf": 0.00204419158 , "cover": 38.7791176 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 77, "yes": 7, "no": 8, "missing": 8 , "gain": 6.51956367, "cover": 79.892067, "children": [
+        { "nodeid": 7, "leaf": 0.0516096354 , "cover": 63.5224075 }, 
+        { "nodeid": 8, "leaf": -0.0181336384 , "cover": 16.3696613 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 13.2305088, "cover": 154.084091, "children": [
+    { "nodeid": 1, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 10.2317772, "cover": 130.278091, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 24.7399998, "yes": 7, "no": 8, "missing": 8 , "gain": 9.79466534, "cover": 93.2580795, "children": [
+        { "nodeid": 7, "leaf": -0.072402589 , "cover": 30.9364452 }, 
+        { "nodeid": 8, "leaf": -0.004221607 , "cover": 62.3216324 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 21.5300007, "yes": 9, "no": 10, "missing": 10 , "gain": 5.82848549, "cover": 37.0200157, "children": [
+        { "nodeid": 9, "leaf": -0.0549401939 , "cover": 5.38998747 }, 
+        { "nodeid": 10, "leaf": 0.0505099781 , "cover": 31.6300259 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT/AST", "split_condition": 1.18181813, "yes": 5, "no": 6, "missing": 6 , "gain": 2.57661915, "cover": 23.8059998, "children": [
+      { "nodeid": 5, "leaf": 0.00580014382 , "cover": 5.15923309 }, 
+      { "nodeid": 6, "depth": 2, "split": "BMI", "split_condition": 26.1700001, "yes": 11, "no": 12, "missing": 12 , "gain": 2.95876884, "cover": 18.6467667, "children": [
+        { "nodeid": 11, "leaf": 0.0179326069 , "cover": 5.20958948 }, 
+        { "nodeid": 12, "leaf": 0.109856486 , "cover": 13.4371758 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 53.5, "yes": 1, "no": 2, "missing": 2 , "gain": 11.3486948, "cover": 153.656769, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 20.4300003, "yes": 3, "no": 4, "missing": 4 , "gain": 10.2646379, "cover": 132.332016, "children": [
+      { "nodeid": 3, "leaf": -0.11094097 , "cover": 9.72011375 }, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 5.5, "yes": 7, "no": 8, "missing": 8 , "gain": 9.7053175, "cover": 122.611908, "children": [
+        { "nodeid": 7, "leaf": -0.0634434968 , "cover": 24.7353344 }, 
+        { "nodeid": 8, "leaf": 0.00552400108 , "cover": 97.8765717 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 27.2800007, "yes": 5, "no": 6, "missing": 6 , "gain": 4.97907257, "cover": 21.3247528, "children": [
+      { "nodeid": 5, "leaf": 0.0031002122 , "cover": 9.17534733 }, 
+      { "nodeid": 6, "leaf": 0.0994333401 , "cover": 12.1494064 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.24000001, "yes": 1, "no": 2, "missing": 2 , "gain": 11.4296455, "cover": 151.467514, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 43.9000015, "yes": 3, "no": 4, "missing": 4 , "gain": 7.79173088, "cover": 108.656067, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 3.75999999, "yes": 7, "no": 8, "missing": 8 , "gain": 9.16783333, "cover": 40.1179619, "children": [
+        { "nodeid": 7, "leaf": -0.0587099306 , "cover": 5.6387496 }, 
+        { "nodeid": 8, "leaf": 0.0711518303 , "cover": 34.4792099 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 52.9300003, "yes": 9, "no": 10, "missing": 10 , "gain": 12.5608597, "cover": 68.5381088, "children": [
+        { "nodeid": 9, "leaf": -0.0279403757 , "cover": 51.3442001 }, 
+        { "nodeid": 10, "leaf": 0.0685181692 , "cover": 17.1939087 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 28.5400009, "yes": 5, "no": 6, "missing": 6 , "gain": 5.57702637, "cover": 42.8114471, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 10.3500004, "yes": 11, "no": 12, "missing": 12 , "gain": 4.18100643, "cover": 28.2774067, "children": [
+        { "nodeid": 11, "leaf": -0.0954497084 , "cover": 18.2377491 }, 
+        { "nodeid": 12, "leaf": -0.0142124398 , "cover": 10.0396576 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "ALB", "split_condition": 46.5, "yes": 13, "no": 14, "missing": 14 , "gain": 2.17007709, "cover": 14.5340376, "children": [
+        { "nodeid": 13, "leaf": -0.0244254544 , "cover": 8.49545479 }, 
+        { "nodeid": 14, "leaf": 0.0489276722 , "cover": 6.0385828 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.19000006, "yes": 1, "no": 2, "missing": 2 , "gain": 11.6526718, "cover": 149.933853, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 72.9000015, "yes": 3, "no": 4, "missing": 4 , "gain": 7.85469198, "cover": 98.6463089, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 5.5, "yes": 7, "no": 8, "missing": 8 , "gain": 7.49953747, "cover": 64.9711456, "children": [
+        { "nodeid": 7, "leaf": -0.024638392 , "cover": 12.8868666 }, 
+        { "nodeid": 8, "leaf": 0.0588626228 , "cover": 52.0842781 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 27.1900005, "yes": 9, "no": 10, "missing": 10 , "gain": 4.29733849, "cover": 33.6751633, "children": [
+        { "nodeid": 9, "leaf": -0.0730752498 , "cover": 8.75443077 }, 
+        { "nodeid": 10, "leaf": 0.00504042022 , "cover": 24.9207325 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 32.8699989, "yes": 5, "no": 6, "missing": 6 , "gain": 6.56577826, "cover": 51.2875366, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 15.7799997, "yes": 11, "no": 12, "missing": 12 , "gain": 5.31980038, "cover": 39.4630547, "children": [
+        { "nodeid": 11, "leaf": -0.0693111047 , "cover": 34.4498634 }, 
+        { "nodeid": 12, "leaf": 0.0352447852 , "cover": 5.01319313 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 13, "no": 14, "missing": 14 , "gain": 6.53091764, "cover": 11.824482, "children": [
+        { "nodeid": 13, "leaf": -0.0405064337 , "cover": 6.23449039 }, 
+        { "nodeid": 14, "leaf": 0.0978415906 , "cover": 5.58999205 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT/AST", "split_condition": 1.3525306, "yes": 1, "no": 2, "missing": 2 , "gain": 10.6526594, "cover": 149.685272, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 73.9899979, "yes": 3, "no": 4, "missing": 4 , "gain": 7.18009043, "cover": 63.8492165, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.51000023, "yes": 7, "no": 8, "missing": 8 , "gain": 8.33363628, "cover": 48.2652054, "children": [
+        { "nodeid": 7, "leaf": -0.0537275039 , "cover": 23.3971062 }, 
+        { "nodeid": 8, "leaf": 0.0278118439 , "cover": 24.8680973 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 49.1100006, "yes": 9, "no": 10, "missing": 10 , "gain": 3.77123451, "cover": 15.5840111, "children": [
+        { "nodeid": 9, "leaf": -0.122635856 , "cover": 10.0240278 }, 
+        { "nodeid": 10, "leaf": -0.0178982485 , "cover": 5.55998278 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 24.2199993, "yes": 5, "no": 6, "missing": 6 , "gain": 14.583313, "cover": 85.8360519, "children": [
+      { "nodeid": 5, "leaf": -0.0877393633 , "cover": 9.75110817 }, 
+      { "nodeid": 6, "depth": 2, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 11, "no": 12, "missing": 12 , "gain": 9.23552227, "cover": 76.0849457, "children": [
+        { "nodeid": 11, "leaf": -0.00644212076 , "cover": 29.942997 }, 
+        { "nodeid": 12, "leaf": 0.0643765181 , "cover": 46.1419487 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 20.2999992, "yes": 1, "no": 2, "missing": 2 , "gain": 11.2923403, "cover": 145.809998, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 0.949999988, "yes": 3, "no": 4, "missing": 4 , "gain": 1.54549122, "cover": 10.7475271, "children": [
+      { "nodeid": 3, "leaf": -0.0416499488 , "cover": 5.15599108 }, 
+      { "nodeid": 4, "leaf": -0.127561346 , "cover": 5.59153557 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 8.31558132, "cover": 135.062469, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 12.5, "yes": 7, "no": 8, "missing": 8 , "gain": 7.8726778, "cover": 52.1447487, "children": [
+        { "nodeid": 7, "leaf": -0.0445804857 , "cover": 38.9957886 }, 
+        { "nodeid": 8, "leaf": 0.0424768217 , "cover": 13.1489601 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "BMI", "split_condition": 35.5299988, "yes": 9, "no": 10, "missing": 10 , "gain": 8.13954258, "cover": 82.9177246, "children": [
+        { "nodeid": 9, "leaf": 0.0150992395 , "cover": 71.4562912 }, 
+        { "nodeid": 10, "leaf": 0.103018396 , "cover": 11.4614391 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 23.6700001, "yes": 1, "no": 2, "missing": 2 , "gain": 9.00917721, "cover": 147.097473, "children": [
+    { "nodeid": 1, "depth": 1, "split": "阿卡波糖片", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 5.42724037, "cover": 16.2961674, "children": [
+      { "nodeid": 3, "leaf": -0.115052819 , "cover": 8.76491451 }, 
+      { "nodeid": 4, "leaf": -0.00182751217 , "cover": 7.53125286 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 4.53999996, "yes": 5, "no": 6, "missing": 6 , "gain": 10.7030926, "cover": 130.801315, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 32.4599991, "yes": 7, "no": 8, "missing": 8 , "gain": 4.71808386, "cover": 15.0963907, "children": [
+        { "nodeid": 7, "leaf": -0.108355381 , "cover": 8.92505741 }, 
+        { "nodeid": 8, "leaf": 0.00258510187 , "cover": 6.17133331 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "ALT/AST", "split_condition": 1.35677087, "yes": 9, "no": 10, "missing": 10 , "gain": 6.79040289, "cover": 115.704918, "children": [
+        { "nodeid": 9, "leaf": -0.00768297911 , "cover": 47.3263359 }, 
+        { "nodeid": 10, "leaf": 0.0413043797 , "cover": 68.3785858 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 9.1808672, "cover": 151.344452, "children": [
+    { "nodeid": 1, "depth": 1, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 10.1420393, "cover": 130.105606, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 44.2099991, "yes": 7, "no": 8, "missing": 8 , "gain": 6.14893532, "cover": 54.7683983, "children": [
+        { "nodeid": 7, "leaf": -0.00798430946 , "cover": 27.9421215 }, 
+        { "nodeid": 8, "leaf": -0.0747162104 , "cover": 26.8262768 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 46.5800018, "yes": 9, "no": 10, "missing": 10 , "gain": 7.03221607, "cover": 75.337204, "children": [
+        { "nodeid": 9, "leaf": 0.0382085107 , "cover": 46.8609123 }, 
+        { "nodeid": 10, "leaf": -0.0239743814 , "cover": 28.4762917 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 27.2800007, "yes": 5, "no": 6, "missing": 6 , "gain": 2.67887115, "cover": 21.2388458, "children": [
+      { "nodeid": 5, "leaf": 0.0138259698 , "cover": 8.34920692 }, 
+      { "nodeid": 6, "leaf": 0.0874420926 , "cover": 12.8896379 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 51.8800011, "yes": 1, "no": 2, "missing": 2 , "gain": 9.07022572, "cover": 148.229279, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 28.2000008, "yes": 3, "no": 4, "missing": 4 , "gain": 8.21573448, "cover": 124.307137, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.51000023, "yes": 7, "no": 8, "missing": 8 , "gain": 6.84958267, "cover": 79.2203445, "children": [
+        { "nodeid": 7, "leaf": -0.0668520853 , "cover": 28.9964314 }, 
+        { "nodeid": 8, "leaf": -0.00631572399 , "cover": 50.2239189 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 1.38999999, "yes": 9, "no": 10, "missing": 10 , "gain": 4.90571165, "cover": 45.0867882, "children": [
+        { "nodeid": 9, "leaf": 0.0413752757 , "cover": 35.1031189 }, 
+        { "nodeid": 10, "leaf": -0.0353840999 , "cover": 9.98367023 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 75.3000031, "yes": 5, "no": 6, "missing": 6 , "gain": 3.9281354, "cover": 23.9221401, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 26.4200001, "yes": 11, "no": 12, "missing": 12 , "gain": 0.929906845, "cover": 17.2853165, "children": [
+        { "nodeid": 11, "leaf": 0.0398323126 , "cover": 6.29281092 }, 
+        { "nodeid": 12, "leaf": 0.0981107429 , "cover": 10.9925051 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.00840923097 , "cover": 6.63682461 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT", "split_condition": 31, "yes": 1, "no": 2, "missing": 2 , "gain": 8.22912216, "cover": 146.36264, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 72.4199982, "yes": 3, "no": 4, "missing": 4 , "gain": 7.0024066, "cover": 69.8579941, "children": [
+      { "nodeid": 3, "depth": 2, "split": "TP", "split_condition": 55.2999992, "yes": 7, "no": 8, "missing": 8 , "gain": 7.99988461, "cover": 50.7975426, "children": [
+        { "nodeid": 7, "leaf": -0.112611048 , "cover": 5.06103563 }, 
+        { "nodeid": 8, "leaf": 0.00951360445 , "cover": 45.7365074 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 26.3999996, "yes": 9, "no": 10, "missing": 10 , "gain": 4.95681, "cover": 19.0604477, "children": [
+        { "nodeid": 9, "leaf": -0.142935917 , "cover": 6.0427804 }, 
+        { "nodeid": 10, "leaf": -0.0347635522 , "cover": 13.0176678 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 24.1100006, "yes": 5, "no": 6, "missing": 6 , "gain": 7.65115929, "cover": 76.5046463, "children": [
+      { "nodeid": 5, "leaf": -0.0726559907 , "cover": 6.686409 }, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 77.0999985, "yes": 11, "no": 12, "missing": 12 , "gain": 5.45620394, "cover": 69.8182373, "children": [
+        { "nodeid": 11, "leaf": 0.0474112146 , "cover": 54.4349098 }, 
+        { "nodeid": 12, "leaf": -0.0189074688 , "cover": 15.3833265 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "是否饮酒", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 8.61396122, "cover": 143.152252, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 73.9899979, "yes": 3, "no": 4, "missing": 4 , "gain": 7.36058426, "cover": 104.904488, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 50.7999992, "yes": 7, "no": 8, "missing": 8 , "gain": 9.30733871, "cover": 72.8811798, "children": [
+        { "nodeid": 7, "leaf": -0.0112874545 , "cover": 62.8843155 }, 
+        { "nodeid": 8, "leaf": 0.0883204862 , "cover": 9.99686432 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 1.3525306, "yes": 9, "no": 10, "missing": 10 , "gain": 5.07417679, "cover": 32.023304, "children": [
+        { "nodeid": 9, "leaf": -0.0993668064 , "cover": 12.991539 }, 
+        { "nodeid": 10, "leaf": -0.0187647175 , "cover": 19.0317669 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 22.2999992, "yes": 5, "no": 6, "missing": 6 , "gain": 5.08515549, "cover": 38.2477684, "children": [
+      { "nodeid": 5, "leaf": -0.0256935395 , "cover": 8.43977261 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT/AST", "split_condition": 1.62765956, "yes": 11, "no": 12, "missing": 12 , "gain": 1.85458183, "cover": 29.8079929, "children": [
+        { "nodeid": 11, "leaf": 0.0837425217 , "cover": 15.0126772 }, 
+        { "nodeid": 12, "leaf": 0.031171931 , "cover": 14.7953167 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "阿卡波糖片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 6.65876102, "cover": 144.58844, "children": [
+    { "nodeid": 1, "depth": 1, "split": "BMI", "split_condition": 25.2399998, "yes": 3, "no": 4, "missing": 4 , "gain": 7.23248291, "cover": 92.8239594, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 362.899994, "yes": 7, "no": 8, "missing": 8 , "gain": 1.78263283, "cover": 15.3939514, "children": [
+        { "nodeid": 7, "leaf": -0.0415361375 , "cover": 9.14541149 }, 
+        { "nodeid": 8, "leaf": -0.115947939 , "cover": 6.24853945 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 23.1900005, "yes": 9, "no": 10, "missing": 10 , "gain": 7.02107334, "cover": 77.4300079, "children": [
+        { "nodeid": 9, "leaf": -0.0589605533 , "cover": 16.8593426 }, 
+        { "nodeid": 10, "leaf": 0.0122621562 , "cover": 60.5706635 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 14.1000004, "yes": 5, "no": 6, "missing": 6 , "gain": 3.6498785, "cover": 51.7644882, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 7.76999998, "yes": 11, "no": 12, "missing": 12 , "gain": 4.78276682, "cover": 42.4690132, "children": [
+        { "nodeid": 11, "leaf": 0.009132565 , "cover": 23.537096 }, 
+        { "nodeid": 12, "leaf": 0.0761510506 , "cover": 18.9319191 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.0268283393 , "cover": 9.29547215 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "阿卡波糖片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 7.74878263, "cover": 141.122498, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 15, "yes": 3, "no": 4, "missing": 4 , "gain": 6.16965246, "cover": 92.1518326, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 323, "yes": 7, "no": 8, "missing": 8 , "gain": 2.05854225, "cover": 11.7781496, "children": [
+        { "nodeid": 7, "leaf": -0.025373159 , "cover": 5.40305138 }, 
+        { "nodeid": 8, "leaf": -0.112808742 , "cover": 6.37509775 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 23.9899998, "yes": 9, "no": 10, "missing": 10 , "gain": 8.78305244, "cover": 80.3736801, "children": [
+        { "nodeid": 9, "leaf": -0.106426612 , "cover": 6.45918226 }, 
+        { "nodeid": 10, "leaf": 0.00736494968 , "cover": 73.9144974 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 5.62471151, "cover": 48.970665, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 28.7800007, "yes": 11, "no": 12, "missing": 12 , "gain": 1.61478281, "cover": 10.7421637, "children": [
+        { "nodeid": 11, "leaf": -0.0610056333 , "cover": 5.32873487 }, 
+        { "nodeid": 12, "leaf": 0.0116103515 , "cover": 5.41342878 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "GLO", "split_condition": 21.3500004, "yes": 13, "no": 14, "missing": 14 , "gain": 3.1655302, "cover": 38.2285004, "children": [
+        { "nodeid": 13, "leaf": -0.0152235767 , "cover": 5.42067051 }, 
+        { "nodeid": 14, "leaf": 0.0646410063 , "cover": 32.807827 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 54.9000015, "yes": 1, "no": 2, "missing": 2 , "gain": 7.85518312, "cover": 143.413528, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 28.5400009, "yes": 3, "no": 4, "missing": 4 , "gain": 6.14626741, "cover": 131.564529, "children": [
+      { "nodeid": 3, "depth": 2, "split": "TP", "split_condition": 71.4000015, "yes": 7, "no": 8, "missing": 8 , "gain": 13.3738852, "cover": 86.3748627, "children": [
+        { "nodeid": 7, "leaf": 0.000676631171 , "cover": 58.0496025 }, 
+        { "nodeid": 8, "leaf": -0.0821635649 , "cover": 28.3252621 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 1.27777779, "yes": 9, "no": 10, "missing": 10 , "gain": 5.08964443, "cover": 45.1896667, "children": [
+        { "nodeid": 9, "leaf": -0.0240095258 , "cover": 17.1566467 }, 
+        { "nodeid": 10, "leaf": 0.0437010825 , "cover": 28.03302 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT/AST", "split_condition": 1.28533328, "yes": 5, "no": 6, "missing": 6 , "gain": 0.816757202, "cover": 11.849, "children": [
+      { "nodeid": 5, "leaf": 0.0306282174 , "cover": 5.02076864 }, 
+      { "nodeid": 6, "leaf": 0.0918453261 , "cover": 6.82823133 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 71.4000015, "yes": 1, "no": 2, "missing": 2 , "gain": 8.35533619, "cover": 137.517426, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 7.55999994, "yes": 3, "no": 4, "missing": 4 , "gain": 8.36272812, "cover": 78.08358, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 33.2999992, "yes": 7, "no": 8, "missing": 8 , "gain": 10.0448847, "cover": 34.9723892, "children": [
+        { "nodeid": 7, "leaf": -0.0556320362 , "cover": 23.3576088 }, 
+        { "nodeid": 8, "leaf": 0.0544908233 , "cover": 11.6147785 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 20.0100002, "yes": 9, "no": 10, "missing": 10 , "gain": 4.76277637, "cover": 43.1111908, "children": [
+        { "nodeid": 9, "leaf": -0.0380133986 , "cover": 5.15967798 }, 
+        { "nodeid": 10, "leaf": 0.0586967431 , "cover": 37.9515152 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 25, "yes": 5, "no": 6, "missing": 6 , "gain": 9.65587997, "cover": 59.4338531, "children": [
+      { "nodeid": 5, "leaf": -0.124442354 , "cover": 8.51673698 }, 
+      { "nodeid": 6, "depth": 2, "split": "GLO", "split_condition": 35.4000015, "yes": 11, "no": 12, "missing": 12 , "gain": 3.8549099, "cover": 50.9171181, "children": [
+        { "nodeid": 11, "leaf": -0.0237908382 , "cover": 45.829113 }, 
+        { "nodeid": 12, "leaf": 0.0610173158 , "cover": 5.08800459 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.19000006, "yes": 1, "no": 2, "missing": 2 , "gain": 6.28092766, "cover": 137.354111, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 69.9000015, "yes": 3, "no": 4, "missing": 4 , "gain": 3.98414707, "cover": 89.6601334, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.55999994, "yes": 7, "no": 8, "missing": 8 , "gain": 4.68929815, "cover": 42.043766, "children": [
+        { "nodeid": 7, "leaf": 0.00186524075 , "cover": 18.4870071 }, 
+        { "nodeid": 8, "leaf": 0.0686479136 , "cover": 23.5567589 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 25.6800003, "yes": 9, "no": 10, "missing": 10 , "gain": 12.6735287, "cover": 47.6163712, "children": [
+        { "nodeid": 9, "leaf": -0.0877760276 , "cover": 11.7630959 }, 
+        { "nodeid": 10, "leaf": 0.0278489143 , "cover": 35.8532753 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 31.6299992, "yes": 5, "no": 6, "missing": 6 , "gain": 4.53170395, "cover": 47.6939697, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 29.3199997, "yes": 11, "no": 12, "missing": 12 , "gain": 4.61527967, "cover": 34.736805, "children": [
+        { "nodeid": 11, "leaf": -0.0214212965 , "cover": 25.5605068 }, 
+        { "nodeid": 12, "leaf": -0.10229975 , "cover": 9.17629719 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "IBIL", "split_condition": 7.76999998, "yes": 13, "no": 14, "missing": 14 , "gain": 1.91624594, "cover": 12.9571676, "children": [
+        { "nodeid": 13, "leaf": -0.0156004671 , "cover": 6.3758812 }, 
+        { "nodeid": 14, "leaf": 0.0568817444 , "cover": 6.58128643 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 21.6499996, "yes": 1, "no": 2, "missing": 2 , "gain": 9.076828, "cover": 133.146942, "children": [
+    { "nodeid": 1, "leaf": -0.115571022 , "cover": 5.36819696 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALB", "split_condition": 54.9000015, "yes": 3, "no": 4, "missing": 4 , "gain": 8.33267212, "cover": 127.778748, "children": [
+      { "nodeid": 3, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 6.2747941, "cover": 118.125893, "children": [
+        { "nodeid": 5, "leaf": -0.0174359605 , "cover": 77.8190613 }, 
+        { "nodeid": 6, "leaf": 0.030680567 , "cover": 40.3068275 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0914389044 , "cover": 9.65285301 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 6.89351034, "cover": 137.886841, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 43, "yes": 3, "no": 4, "missing": 4 , "gain": 5.00717783, "cover": 120.47979, "children": [
+      { "nodeid": 3, "depth": 2, "split": "HDL-C", "split_condition": 1.22000003, "yes": 7, "no": 8, "missing": 8 , "gain": 6.45665073, "cover": 43.3675461, "children": [
+        { "nodeid": 7, "leaf": 0.0505969413 , "cover": 26.9984016 }, 
+        { "nodeid": 8, "leaf": -0.0272785276 , "cover": 16.3691425 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 28.5400009, "yes": 9, "no": 10, "missing": 10 , "gain": 5.6767621, "cover": 77.1122437, "children": [
+        { "nodeid": 9, "leaf": -0.040304672 , "cover": 50.4081039 }, 
+        { "nodeid": 10, "leaf": 0.0160612427 , "cover": 26.7041416 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 22.1000004, "yes": 5, "no": 6, "missing": 6 , "gain": 2.47005653, "cover": 17.4070454, "children": [
+      { "nodeid": 5, "leaf": 0.00113826664 , "cover": 5.16166353 }, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 74.6999969, "yes": 11, "no": 12, "missing": 12 , "gain": 0.476097107, "cover": 12.2453823, "children": [
+        { "nodeid": 11, "leaf": 0.101278998 , "cover": 7.15251017 }, 
+        { "nodeid": 12, "leaf": 0.0447244979 , "cover": 5.09287214 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 6.19380999, "cover": 136.050049, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 20, "yes": 3, "no": 4, "missing": 4 , "gain": 4.33141613, "cover": 119.81517, "children": [
+      { "nodeid": 3, "leaf": -0.0818770975 , "cover": 6.40883017 }, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 72.4199982, "yes": 7, "no": 8, "missing": 8 , "gain": 5.57584047, "cover": 113.406334, "children": [
+        { "nodeid": 7, "leaf": 0.0151199121 , "cover": 68.0267029 }, 
+        { "nodeid": 8, "leaf": -0.0297164954 , "cover": 45.3796349 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 27.2800007, "yes": 5, "no": 6, "missing": 6 , "gain": 2.06348419, "cover": 16.2348804, "children": [
+      { "nodeid": 5, "leaf": 0.0149302082 , "cover": 7.5591588 }, 
+      { "nodeid": 6, "leaf": 0.0870615467 , "cover": 8.67572021 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 21.6499996, "yes": 1, "no": 2, "missing": 2 , "gain": 5.31383038, "cover": 138.595978, "children": [
+    { "nodeid": 1, "leaf": -0.0836549848 , "cover": 5.91574955 }, 
+    { "nodeid": 2, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 3.66689897, "cover": 132.680222, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT/AST", "split_condition": 1.2352941, "yes": 5, "no": 6, "missing": 6 , "gain": 5.49088144, "cover": 95.9735489, "children": [
+        { "nodeid": 5, "leaf": -0.0336294882 , "cover": 37.2700081 }, 
+        { "nodeid": 6, "leaf": 0.0149006918 , "cover": 58.7035408 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 26.9500008, "yes": 7, "no": 8, "missing": 8 , "gain": 3.85112906, "cover": 36.7066765, "children": [
+        { "nodeid": 7, "leaf": 0.0830703303 , "cover": 9.84315109 }, 
+        { "nodeid": 8, "leaf": 0.0118872188 , "cover": 26.8635235 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.19000006, "yes": 1, "no": 2, "missing": 2 , "gain": 5.77692652, "cover": 137.562775, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 76.4000015, "yes": 3, "no": 4, "missing": 4 , "gain": 4.3613348, "cover": 88.0232773, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 24.8299999, "yes": 7, "no": 8, "missing": 8 , "gain": 3.7779274, "cover": 71.1052399, "children": [
+        { "nodeid": 7, "leaf": 0.000960821111 , "cover": 33.847065 }, 
+        { "nodeid": 8, "leaf": 0.0468554422 , "cover": 37.2581749 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 9.18000031, "yes": 9, "no": 10, "missing": 10 , "gain": 3.37139654, "cover": 16.9180336, "children": [
+        { "nodeid": 9, "leaf": -0.0736916736 , "cover": 7.90133715 }, 
+        { "nodeid": 10, "leaf": 0.0119432379 , "cover": 9.01669693 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 3.75231123, "cover": 49.5394936, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 32.8699989, "yes": 11, "no": 12, "missing": 12 , "gain": 4.28919077, "cover": 38.4392624, "children": [
+        { "nodeid": 11, "leaf": -0.0597958155 , "cover": 29.9134827 }, 
+        { "nodeid": 12, "leaf": 0.0185047351 , "cover": 8.52577972 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 387.600006, "yes": 13, "no": 14, "missing": 14 , "gain": 2.13023472, "cover": 11.1002321, "children": [
+        { "nodeid": 13, "leaf": 0.0635663271 , "cover": 5.14610004 }, 
+        { "nodeid": 14, "leaf": -0.0180734005 , "cover": 5.95413208 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 28.5400009, "yes": 1, "no": 2, "missing": 2 , "gain": 5.61617374, "cover": 134.261032, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 74.1600037, "yes": 3, "no": 4, "missing": 4 , "gain": 8.23091698, "cover": 92.1713715, "children": [
+      { "nodeid": 3, "depth": 2, "split": "HDL-C", "split_condition": 1.35000002, "yes": 7, "no": 8, "missing": 8 , "gain": 8.82711697, "cover": 77.8707199, "children": [
+        { "nodeid": 7, "leaf": 0.0181429237 , "cover": 63.5838127 }, 
+        { "nodeid": 8, "leaf": -0.066363804 , "cover": 14.2869053 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT", "split_condition": 33.2999992, "yes": 9, "no": 10, "missing": 10 , "gain": 1.49336529, "cover": 14.3006506, "children": [
+        { "nodeid": 9, "leaf": -0.119808614 , "cover": 5.04363632 }, 
+        { "nodeid": 10, "leaf": -0.0460745506 , "cover": 9.25701427 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 53.2000008, "yes": 5, "no": 6, "missing": 6 , "gain": 3.00678349, "cover": 42.0896683, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 6.17999983, "yes": 11, "no": 12, "missing": 12 , "gain": 3.6212821, "cover": 29.7967052, "children": [
+        { "nodeid": 11, "leaf": 0.00224636588 , "cover": 10.7701902 }, 
+        { "nodeid": 12, "leaf": 0.0743670464 , "cover": 19.026516 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "ALT", "split_condition": 91.0800018, "yes": 13, "no": 14, "missing": 14 , "gain": 3.5650568, "cover": 12.2929611, "children": [
+        { "nodeid": 13, "leaf": -0.0516121499 , "cover": 7.12430191 }, 
+        { "nodeid": 14, "leaf": 0.0493201166 , "cover": 5.16865921 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "IBIL", "split_condition": 4.53999996, "yes": 1, "no": 2, "missing": 2 , "gain": 4.70452595, "cover": 133.423676, "children": [
+    { "nodeid": 1, "depth": 1, "split": "UA", "split_condition": 442, "yes": 3, "no": 4, "missing": 4 , "gain": 5.49284506, "cover": 16.8090343, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 27.9300003, "yes": 7, "no": 8, "missing": 8 , "gain": 1.1473217, "cover": 11.7501926, "children": [
+        { "nodeid": 7, "leaf": -0.112294294 , "cover": 6.53252268 }, 
+        { "nodeid": 8, "leaf": -0.0391185358 , "cover": 5.21766996 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0326967649 , "cover": 5.05884123 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 55.6899986, "yes": 5, "no": 6, "missing": 6 , "gain": 5.28636122, "cover": 116.614639, "children": [
+      { "nodeid": 5, "leaf": -0.0848911107 , "cover": 5.1925478 }, 
+      { "nodeid": 6, "depth": 2, "split": "GLO", "split_condition": 20.2999992, "yes": 9, "no": 10, "missing": 10 , "gain": 3.50350165, "cover": 111.422089, "children": [
+        { "nodeid": 9, "leaf": -0.061755009 , "cover": 5.4454174 }, 
+        { "nodeid": 10, "leaf": 0.014268497 , "cover": 105.976669 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 70.8899994, "yes": 1, "no": 2, "missing": 2 , "gain": 7.51146078, "cover": 134.572113, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 7.55999994, "yes": 3, "no": 4, "missing": 4 , "gain": 11.6185493, "cover": 70.4501572, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 25.9200001, "yes": 7, "no": 8, "missing": 8 , "gain": 5.19247532, "cover": 33.1156082, "children": [
+        { "nodeid": 7, "leaf": -0.043551743 , "cover": 21.0730591 }, 
+        { "nodeid": 8, "leaf": 0.0361851305 , "cover": 12.0425501 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT", "split_condition": 36, "yes": 9, "no": 10, "missing": 10 , "gain": 3.50333214, "cover": 37.334549, "children": [
+        { "nodeid": 9, "leaf": 0.0937993601 , "cover": 20.1431293 }, 
+        { "nodeid": 10, "leaf": 0.0304032695 , "cover": 17.1914215 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 23.7999992, "yes": 5, "no": 6, "missing": 6 , "gain": 8.48959923, "cover": 64.1219559, "children": [
+      { "nodeid": 5, "leaf": -0.118068807 , "cover": 6.54593468 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT/AST", "split_condition": 2.090909, "yes": 11, "no": 12, "missing": 12 , "gain": 3.7594223, "cover": 57.5760193, "children": [
+        { "nodeid": 11, "leaf": -0.0183040481 , "cover": 45.6391602 }, 
+        { "nodeid": 12, "leaf": 0.04264367 , "cover": 11.9368572 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "是否饮酒", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 5.77658749, "cover": 132.519226, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 24.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 5.4273715, "cover": 95.986084, "children": [
+      { "nodeid": 3, "depth": 2, "split": "TP", "split_condition": 68.4199982, "yes": 7, "no": 8, "missing": 8 , "gain": 8.62764549, "cover": 31.9538326, "children": [
+        { "nodeid": 7, "leaf": -0.00860676169 , "cover": 21.6374722 }, 
+        { "nodeid": 8, "leaf": -0.116809152 , "cover": 10.3163595 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 241, "yes": 9, "no": 10, "missing": 10 , "gain": 4.62580919, "cover": 64.0322571, "children": [
+        { "nodeid": 9, "leaf": -0.0796884224 , "cover": 5.03094435 }, 
+        { "nodeid": 10, "leaf": 0.012201542 , "cover": 59.0013123 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 29.7800007, "yes": 5, "no": 6, "missing": 6 , "gain": 3.11213017, "cover": 36.5331345, "children": [
+      { "nodeid": 5, "depth": 2, "split": "GLO", "split_condition": 27.2999992, "yes": 11, "no": 12, "missing": 12 , "gain": 2.48067474, "cover": 28.4062481, "children": [
+        { "nodeid": 11, "leaf": 0.0327825323 , "cover": 21.4292927 }, 
+        { "nodeid": 12, "leaf": -0.0324777476 , "cover": 6.97695589 }
+      ]}, 
+      { "nodeid": 6, "leaf": 0.084179081 , "cover": 8.12688828 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "IBIL", "split_condition": 3.75999999, "yes": 1, "no": 2, "missing": 2 , "gain": 4.93658829, "cover": 129.581787, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 0.99000001, "yes": 3, "no": 4, "missing": 4 , "gain": 3.44138098, "cover": 10.7228432, "children": [
+      { "nodeid": 3, "leaf": -0.00310194725 , "cover": 5.07883358 }, 
+      { "nodeid": 4, "leaf": -0.113072686 , "cover": 5.64400959 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 26.1299992, "yes": 5, "no": 6, "missing": 6 , "gain": 5.22193909, "cover": 118.85894, "children": [
+      { "nodeid": 5, "depth": 2, "split": "ALB", "split_condition": 54.9000015, "yes": 7, "no": 8, "missing": 8 , "gain": 7.2640686, "cover": 58.7398109, "children": [
+        { "nodeid": 7, "leaf": -0.0309957173 , "cover": 52.6831703 }, 
+        { "nodeid": 8, "leaf": 0.0771821067 , "cover": 6.05664301 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 71, "yes": 9, "no": 10, "missing": 10 , "gain": 5.00165224, "cover": 60.1191292, "children": [
+        { "nodeid": 9, "leaf": 0.0696818456 , "cover": 15.610322 }, 
+        { "nodeid": 10, "leaf": 0.00524268439 , "cover": 44.5088081 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "阿卡波糖片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 6.08612442, "cover": 125.447479, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 16.7099991, "yes": 3, "no": 4, "missing": 4 , "gain": 8.18263626, "cover": 82.9895782, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 23.7199993, "yes": 7, "no": 8, "missing": 8 , "gain": 2.60388112, "cover": 73.0379791, "children": [
+        { "nodeid": 7, "leaf": -0.0514036082 , "cover": 21.6263313 }, 
+        { "nodeid": 8, "leaf": -0.0104051307 , "cover": 51.4116516 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0696071535 , "cover": 9.95159245 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 11.5200005, "yes": 5, "no": 6, "missing": 6 , "gain": 4.40204382, "cover": 42.4579086, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 4.19999981, "yes": 9, "no": 10, "missing": 10 , "gain": 4.13560867, "cover": 29.8355999, "children": [
+        { "nodeid": 9, "leaf": -0.0132790012 , "cover": 6.57015371 }, 
+        { "nodeid": 10, "leaf": 0.0743556395 , "cover": 23.2654457 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "ALT/AST", "split_condition": 1.68421054, "yes": 11, "no": 12, "missing": 12 , "gain": 2.60659671, "cover": 12.6223068, "children": [
+        { "nodeid": 11, "leaf": -0.0507029407 , "cover": 7.15366411 }, 
+        { "nodeid": 12, "leaf": 0.0345992558 , "cover": 5.46864319 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 19, "yes": 1, "no": 2, "missing": 2 , "gain": 4.52805424, "cover": 133.667557, "children": [
+    { "nodeid": 1, "leaf": -0.0801275074 , "cover": 5.47276211 }, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 70.8899994, "yes": 3, "no": 4, "missing": 4 , "gain": 4.67231131, "cover": 128.194794, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.55999994, "yes": 5, "no": 6, "missing": 6 , "gain": 3.43652558, "cover": 64.4847488, "children": [
+        { "nodeid": 5, "leaf": -0.000470749626 , "cover": 30.0647659 }, 
+        { "nodeid": 6, "leaf": 0.0454839878 , "cover": 34.4199867 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 25, "yes": 7, "no": 8, "missing": 8 , "gain": 5.86252069, "cover": 63.710041, "children": [
+        { "nodeid": 7, "leaf": -0.0825175717 , "cover": 9.34634209 }, 
+        { "nodeid": 8, "leaf": -0.000384495768 , "cover": 54.3636971 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.25, "yes": 1, "no": 2, "missing": 2 , "gain": 4.69952583, "cover": 128.93869, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 72.6999969, "yes": 3, "no": 4, "missing": 4 , "gain": 5.98760223, "cover": 90.7035522, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 453, "yes": 7, "no": 8, "missing": 8 , "gain": 5.22260332, "cover": 56.9540215, "children": [
+        { "nodeid": 7, "leaf": 0.0131691499 , "cover": 39.6539192 }, 
+        { "nodeid": 8, "leaf": 0.0781936869 , "cover": 17.3001022 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 49.5999985, "yes": 9, "no": 10, "missing": 10 , "gain": 3.92818284, "cover": 33.7495308, "children": [
+        { "nodeid": 9, "leaf": 0.00638455851 , "cover": 22.1745911 }, 
+        { "nodeid": 10, "leaf": -0.0633318499 , "cover": 11.5749416 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 25.8999996, "yes": 5, "no": 6, "missing": 6 , "gain": 3.51739144, "cover": 38.2351341, "children": [
+      { "nodeid": 5, "depth": 2, "split": "IBIL", "split_condition": 6.92000008, "yes": 11, "no": 12, "missing": 12 , "gain": 1.33786058, "cover": 16.7690353, "children": [
+        { "nodeid": 11, "leaf": -0.0924468189 , "cover": 6.72566748 }, 
+        { "nodeid": 12, "leaf": -0.0316988342 , "cover": 10.0433683 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 417, "yes": 13, "no": 14, "missing": 14 , "gain": 4.7343564, "cover": 21.4660969, "children": [
+        { "nodeid": 13, "leaf": 0.0393153839 , "cover": 12.355423 }, 
+        { "nodeid": 14, "leaf": -0.0513898507 , "cover": 9.11067295 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "是否饮酒", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 4.12846851, "cover": 127.448288, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 74, "yes": 3, "no": 4, "missing": 4 , "gain": 3.8803792, "cover": 93.1602631, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 24.6000004, "yes": 7, "no": 8, "missing": 8 , "gain": 6.84181499, "cover": 63.3591385, "children": [
+        { "nodeid": 7, "leaf": -0.0401932634 , "cover": 28.446249 }, 
+        { "nodeid": 8, "leaf": 0.0248440634 , "cover": 34.9128876 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 1.28533328, "yes": 9, "no": 10, "missing": 10 , "gain": 3.21026945, "cover": 29.8011246, "children": [
+        { "nodeid": 9, "leaf": -0.0920969397 , "cover": 9.82768345 }, 
+        { "nodeid": 10, "leaf": -0.0227685105 , "cover": 19.9734402 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT/AST", "split_condition": 1.18181813, "yes": 5, "no": 6, "missing": 6 , "gain": 3.51697135, "cover": 34.2880287, "children": [
+      { "nodeid": 5, "leaf": 0.0709150955 , "cover": 9.19298077 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT", "split_condition": 29.5, "yes": 11, "no": 12, "missing": 12 , "gain": 3.79674149, "cover": 25.095047, "children": [
+        { "nodeid": 11, "leaf": -0.055780381 , "cover": 7.17561865 }, 
+        { "nodeid": 12, "leaf": 0.0257734209 , "cover": 17.9194279 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 4.48449564, "cover": 127.234268, "children": [
+    { "nodeid": 1, "depth": 1, "split": "UA", "split_condition": 579, "yes": 3, "no": 4, "missing": 4 , "gain": 3.59038401, "cover": 113.221169, "children": [
+      { "nodeid": 3, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 7, "no": 8, "missing": 8 , "gain": 3.33529043, "cover": 102.918465, "children": [
+        { "nodeid": 7, "leaf": -0.0311702248 , "cover": 69.1452408 }, 
+        { "nodeid": 8, "leaf": 0.00690318411 , "cover": 33.7732277 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 1.39506173, "yes": 9, "no": 10, "missing": 10 , "gain": 1.85468519, "cover": 10.3027039, "children": [
+        { "nodeid": 9, "leaf": -0.00241683098 , "cover": 5.2330966 }, 
+        { "nodeid": 10, "leaf": 0.0783759579 , "cover": 5.06960726 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 27.2800007, "yes": 5, "no": 6, "missing": 6 , "gain": 2.99573135, "cover": 14.0130949, "children": [
+      { "nodeid": 5, "leaf": -0.00618885225 , "cover": 6.3353529 }, 
+      { "nodeid": 6, "leaf": 0.0833489522 , "cover": 7.67774248 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 51.8800011, "yes": 1, "no": 2, "missing": 2 , "gain": 3.93926048, "cover": 133.11319, "children": [
+    { "nodeid": 1, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 3, "no": 4, "missing": 4 , "gain": 3.26977611, "cover": 115.569962, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 24.7999992, "yes": 7, "no": 8, "missing": 8 , "gain": 5.24615765, "cover": 84.2038345, "children": [
+        { "nodeid": 7, "leaf": -0.053660132 , "cover": 27.9177094 }, 
+        { "nodeid": 8, "leaf": -0.00123306049 , "cover": 56.2861252 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 27.1299992, "yes": 9, "no": 10, "missing": 10 , "gain": 4.12070847, "cover": 31.3661289, "children": [
+        { "nodeid": 9, "leaf": 0.0707622096 , "cover": 9.25299644 }, 
+        { "nodeid": 10, "leaf": -0.00570875499 , "cover": 22.1131325 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 33.2999992, "yes": 5, "no": 6, "missing": 6 , "gain": 3.82621527, "cover": 17.5432339, "children": [
+      { "nodeid": 5, "leaf": -0.00559149915 , "cover": 8.95702744 }, 
+      { "nodeid": 6, "leaf": 0.08472725 , "cover": 8.58620739 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "阿卡波糖片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 4.25203419, "cover": 131.918488, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 18, "yes": 3, "no": 4, "missing": 4 , "gain": 3.56956768, "cover": 89.0664673, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 282, "yes": 7, "no": 8, "missing": 8 , "gain": 2.85055304, "cover": 17.9340649, "children": [
+        { "nodeid": 7, "leaf": 0.00607838435 , "cover": 5.6731739 }, 
+        { "nodeid": 8, "leaf": -0.0776154473 , "cover": 12.260891 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 1.45000005, "yes": 9, "no": 10, "missing": 10 , "gain": 5.65688801, "cover": 71.1324005, "children": [
+        { "nodeid": 9, "leaf": 0.00792970136 , "cover": 61.944725 }, 
+        { "nodeid": 10, "leaf": -0.0723984614 , "cover": 9.18767643 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "HDL-C", "split_condition": 0.839999974, "yes": 5, "no": 6, "missing": 6 , "gain": 1.9072845, "cover": 42.8520164, "children": [
+      { "nodeid": 5, "leaf": -0.0140991751 , "cover": 9.48261547 }, 
+      { "nodeid": 6, "depth": 2, "split": "HDL-C", "split_condition": 1.21000004, "yes": 11, "no": 12, "missing": 12 , "gain": 1.88348293, "cover": 33.3694, "children": [
+        { "nodeid": 11, "leaf": 0.0553454421 , "cover": 18.9084854 }, 
+        { "nodeid": 12, "leaf": 0.00734614348 , "cover": 14.4609156 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 35.2299995, "yes": 1, "no": 2, "missing": 2 , "gain": 2.94124961, "cover": 126.51638, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 3.25999999, "yes": 3, "no": 4, "missing": 4 , "gain": 3.29312611, "cover": 120.169357, "children": [
+      { "nodeid": 3, "leaf": -0.0695304945 , "cover": 5.93480253 }, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 80.0500031, "yes": 5, "no": 6, "missing": 6 , "gain": 2.88548756, "cover": 114.234558, "children": [
+        { "nodeid": 5, "leaf": 0.00509934686 , "cover": 109.219589 }, 
+        { "nodeid": 6, "leaf": -0.0660296306 , "cover": 5.01496601 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0625445545 , "cover": 6.34701777 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 21.6499996, "yes": 1, "no": 2, "missing": 2 , "gain": 4.7775178, "cover": 126.268822, "children": [
+    { "nodeid": 1, "leaf": -0.0848299488 , "cover": 5.26010227 }, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 391, "yes": 3, "no": 4, "missing": 4 , "gain": 3.81186557, "cover": 121.00872, "children": [
+      { "nodeid": 3, "depth": 2, "split": "BMI", "split_condition": 29.0200005, "yes": 5, "no": 6, "missing": 6 , "gain": 5.08379316, "cover": 60.8158684, "children": [
+        { "nodeid": 5, "leaf": 0.0145603511 , "cover": 31.8987808 }, 
+        { "nodeid": 6, "leaf": -0.0424913131 , "cover": 28.9170856 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 0.928571403, "yes": 7, "no": 8, "missing": 8 , "gain": 3.89514661, "cover": 60.1928558, "children": [
+        { "nodeid": 7, "leaf": -0.0415153205 , "cover": 7.43964767 }, 
+        { "nodeid": 8, "leaf": 0.0320212431 , "cover": 52.7532082 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 21.6499996, "yes": 1, "no": 2, "missing": 2 , "gain": 4.15705204, "cover": 131.684952, "children": [
+    { "nodeid": 1, "leaf": -0.0808690414 , "cover": 5.60634708 }, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 19, "yes": 3, "no": 4, "missing": 4 , "gain": 3.04623556, "cover": 126.078606, "children": [
+      { "nodeid": 3, "leaf": -0.0656626895 , "cover": 5.60021925 }, 
+      { "nodeid": 4, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 4.05765867, "cover": 120.478386, "children": [
+        { "nodeid": 5, "leaf": -0.00884080026 , "cover": 80.5276871 }, 
+        { "nodeid": 6, "leaf": 0.0297490656 , "cover": 39.9506989 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.25, "yes": 1, "no": 2, "missing": 2 , "gain": 4.4826746, "cover": 125.900269, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 43.8400002, "yes": 3, "no": 4, "missing": 4 , "gain": 5.06004333, "cover": 89.3761139, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 38, "yes": 7, "no": 8, "missing": 8 , "gain": 3.97354221, "cover": 32.9628563, "children": [
+        { "nodeid": 7, "leaf": -0.00902353507 , "cover": 10.3091421 }, 
+        { "nodeid": 8, "leaf": 0.0645773932 , "cover": 22.6537132 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 45.7299995, "yes": 9, "no": 10, "missing": 10 , "gain": 3.04128599, "cover": 56.4132614, "children": [
+        { "nodeid": 9, "leaf": -0.0538812168 , "cover": 10.0746183 }, 
+        { "nodeid": 10, "leaf": 0.00437403237 , "cover": 46.3386421 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 19.8999996, "yes": 5, "no": 6, "missing": 6 , "gain": 4.62898445, "cover": 36.5241547, "children": [
+      { "nodeid": 5, "leaf": -0.0878226757 , "cover": 9.03695774 }, 
+      { "nodeid": 6, "depth": 2, "split": "GLO", "split_condition": 23.1900005, "yes": 11, "no": 12, "missing": 12 , "gain": 2.38598251, "cover": 27.4871979, "children": [
+        { "nodeid": 11, "leaf": -0.0633084998 , "cover": 5.15410376 }, 
+        { "nodeid": 12, "leaf": 0.00678229099 , "cover": 22.3330936 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 70.6999969, "yes": 1, "no": 2, "missing": 2 , "gain": 4.44791794, "cover": 127.98494, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 7.55999994, "yes": 3, "no": 4, "missing": 4 , "gain": 5.5208869, "cover": 63.0648499, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 34.5999985, "yes": 7, "no": 8, "missing": 8 , "gain": 6.05591249, "cover": 30.8509846, "children": [
+        { "nodeid": 7, "leaf": -0.043800503 , "cover": 20.3798637 }, 
+        { "nodeid": 8, "leaf": 0.046381183 , "cover": 10.4711208 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 31.2000008, "yes": 9, "no": 10, "missing": 10 , "gain": 2.46925783, "cover": 32.2138672, "children": [
+        { "nodeid": 9, "leaf": 0.0633416772 , "cover": 22.4406261 }, 
+        { "nodeid": 10, "leaf": 0.00317102158 , "cover": 9.77324009 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 24.7399998, "yes": 5, "no": 6, "missing": 6 , "gain": 4.2046628, "cover": 64.9200897, "children": [
+      { "nodeid": 5, "leaf": -0.0769539401 , "cover": 9.72254944 }, 
+      { "nodeid": 6, "depth": 2, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 11, "no": 12, "missing": 12 , "gain": 3.27676201, "cover": 55.1975403, "children": [
+        { "nodeid": 11, "leaf": -0.0352116376 , "cover": 24.1527634 }, 
+        { "nodeid": 12, "leaf": 0.0130596757 , "cover": 31.044775 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 440, "yes": 1, "no": 2, "missing": 2 , "gain": 4.56808233, "cover": 122.780746, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 62.7000008, "yes": 3, "no": 4, "missing": 4 , "gain": 3.8478086, "cover": 79.9876328, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 22.1000004, "yes": 7, "no": 8, "missing": 8 , "gain": 3.48137522, "cover": 17.1911068, "children": [
+        { "nodeid": 7, "leaf": -0.0236844644 , "cover": 6.40492201 }, 
+        { "nodeid": 8, "leaf": 0.0650596917 , "cover": 10.7861843 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT", "split_condition": 21, "yes": 9, "no": 10, "missing": 10 , "gain": 5.75155735, "cover": 62.7965279, "children": [
+        { "nodeid": 9, "leaf": -0.0679201409 , "cover": 16.8095055 }, 
+        { "nodeid": 10, "leaf": -0.000964481966 , "cover": 45.9870224 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 75.0999985, "yes": 5, "no": 6, "missing": 6 , "gain": 5.9701376, "cover": 42.7931137, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 60.1399994, "yes": 11, "no": 12, "missing": 12 , "gain": 4.28379631, "cover": 30.0121403, "children": [
+        { "nodeid": 11, "leaf": -0.0239888746 , "cover": 5.10164547 }, 
+        { "nodeid": 12, "leaf": 0.0723617449 , "cover": 24.9104939 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 514, "yes": 13, "no": 14, "missing": 14 , "gain": 3.19503617, "cover": 12.7809725, "children": [
+        { "nodeid": 13, "leaf": 0.0283731427 , "cover": 5.80308008 }, 
+        { "nodeid": 14, "leaf": -0.0656897947 , "cover": 6.97789192 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 584, "yes": 1, "no": 2, "missing": 2 , "gain": 5.71372557, "cover": 122.650223, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 136, "yes": 3, "no": 4, "missing": 4 , "gain": 3.65482187, "cover": 114.730324, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 20.2999992, "yes": 5, "no": 6, "missing": 6 , "gain": 3.23587656, "cover": 109.079231, "children": [
+        { "nodeid": 5, "leaf": -0.0726089925 , "cover": 8.19872475 }, 
+        { "nodeid": 6, "leaf": -0.0104443813 , "cover": 100.880508 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0607375279 , "cover": 5.65109825 }
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0716093779 , "cover": 7.91989183 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 2.92335558, "cover": 125.424263, "children": [
+    { "nodeid": 1, "leaf": -0.0607567839 , "cover": 5.93035841 }, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 16.7099991, "yes": 3, "no": 4, "missing": 4 , "gain": 2.50336528, "cover": 119.493904, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 13.1000004, "yes": 5, "no": 6, "missing": 6 , "gain": 4.77413845, "cover": 105.597984, "children": [
+        { "nodeid": 5, "leaf": 0.00905906875 , "cover": 91.6976776 }, 
+        { "nodeid": 6, "leaf": -0.0519254021 , "cover": 13.9003077 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 1.02999997, "yes": 7, "no": 8, "missing": 8 , "gain": 2.78851366, "cover": 13.8959227, "children": [
+        { "nodeid": 7, "leaf": -0.0137393 , "cover": 5.02454329 }, 
+        { "nodeid": 8, "leaf": 0.0754099265 , "cover": 8.87137985 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 72.4199982, "yes": 1, "no": 2, "missing": 2 , "gain": 3.06521535, "cover": 126.795837, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 15.9300003, "yes": 3, "no": 4, "missing": 4 , "gain": 3.48453808, "cover": 77.3958054, "children": [
+      { "nodeid": 3, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 7, "no": 8, "missing": 8 , "gain": 2.70145202, "cover": 70.7284393, "children": [
+        { "nodeid": 7, "leaf": -0.00896940101 , "cover": 45.1003761 }, 
+        { "nodeid": 8, "leaf": 0.0310612079 , "cover": 25.6280613 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0768560767 , "cover": 6.66736698 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 21.3999996, "yes": 5, "no": 6, "missing": 6 , "gain": 3.71529579, "cover": 49.400032, "children": [
+      { "nodeid": 5, "leaf": -0.0758586153 , "cover": 8.31632233 }, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 541, "yes": 9, "no": 10, "missing": 10 , "gain": 3.38382459, "cover": 41.0837097, "children": [
+        { "nodeid": 9, "leaf": 0.00659544347 , "cover": 35.2210617 }, 
+        { "nodeid": 10, "leaf": -0.0700242892 , "cover": 5.86264801 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 52.9300003, "yes": 1, "no": 2, "missing": 2 , "gain": 2.9469583, "cover": 120.672775, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 54, "yes": 3, "no": 4, "missing": 4 , "gain": 3.44288588, "cover": 107.576118, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 5.5, "yes": 7, "no": 8, "missing": 8 , "gain": 5.41016197, "cover": 76.9489059, "children": [
+        { "nodeid": 7, "leaf": -0.0494322442 , "cover": 16.2926846 }, 
+        { "nodeid": 8, "leaf": 0.0138611719 , "cover": 60.6562233 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 6.3499999, "yes": 9, "no": 10, "missing": 10 , "gain": 4.98742771, "cover": 30.6272106, "children": [
+        { "nodeid": 9, "leaf": 0.0424232893 , "cover": 5.38764858 }, 
+        { "nodeid": 10, "leaf": -0.057569351 , "cover": 25.2395611 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "HDL-C", "split_condition": 1.12, "yes": 5, "no": 6, "missing": 6 , "gain": 1.82416832, "cover": 13.0966549, "children": [
+      { "nodeid": 5, "leaf": 0.0670454651 , "cover": 7.35773325 }, 
+      { "nodeid": 6, "leaf": -0.00531515572 , "cover": 5.73892164 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 28.5400009, "yes": 1, "no": 2, "missing": 2 , "gain": 4.39029121, "cover": 125.631401, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 27.4200001, "yes": 3, "no": 4, "missing": 4 , "gain": 6.19758606, "cover": 84.8965759, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 16.6000004, "yes": 7, "no": 8, "missing": 8 , "gain": 3.18657875, "cover": 72.8555298, "children": [
+        { "nodeid": 7, "leaf": -0.00647786353 , "cover": 64.3134613 }, 
+        { "nodeid": 8, "leaf": 0.0553900376 , "cover": 8.54206657 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 71.4000015, "yes": 9, "no": 10, "missing": 10 , "gain": 1.70867395, "cover": 12.041049, "children": [
+        { "nodeid": 9, "leaf": -0.0226259213 , "cover": 5.05503178 }, 
+        { "nodeid": 10, "leaf": -0.102718107 , "cover": 6.98601723 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 325, "yes": 5, "no": 6, "missing": 6 , "gain": 2.95468736, "cover": 40.7348289, "children": [
+      { "nodeid": 5, "depth": 2, "split": "GLO", "split_condition": 31.2199993, "yes": 11, "no": 12, "missing": 12 , "gain": 5.77251959, "cover": 11.7996941, "children": [
+        { "nodeid": 11, "leaf": 0.0477839969 , "cover": 6.56446743 }, 
+        { "nodeid": 12, "leaf": -0.0823205635 , "cover": 5.23522663 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 77, "yes": 13, "no": 14, "missing": 14 , "gain": 2.81515551, "cover": 28.935133, "children": [
+        { "nodeid": 13, "leaf": 0.072989352 , "cover": 16.100832 }, 
+        { "nodeid": 14, "leaf": 0.0101148998 , "cover": 12.834301 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 35.2299995, "yes": 1, "no": 2, "missing": 2 , "gain": 2.47146297, "cover": 125.183548, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 32.5, "yes": 3, "no": 4, "missing": 4 , "gain": 4.78965378, "cover": 119.626366, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 29.8199997, "yes": 5, "no": 6, "missing": 6 , "gain": 4.18372726, "cover": 113.535637, "children": [
+        { "nodeid": 5, "leaf": -0.00654411269 , "cover": 99.3751526 }, 
+        { "nodeid": 6, "leaf": 0.049816262 , "cover": 14.1604805 }
+      ]}, 
+      { "nodeid": 4, "leaf": -0.0838494524 , "cover": 6.09073305 }
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0589271076 , "cover": 5.55717659 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 33.75, "yes": 1, "no": 2, "missing": 2 , "gain": 3.41795349, "cover": 121.297287, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 62.2000008, "yes": 3, "no": 4, "missing": 4 , "gain": 3.10640621, "cover": 95.3481979, "children": [
+      { "nodeid": 3, "depth": 2, "split": "TP", "split_condition": 55.2999992, "yes": 7, "no": 8, "missing": 8 , "gain": 2.32467937, "cover": 18.0842533, "children": [
+        { "nodeid": 7, "leaf": -0.0253561325 , "cover": 5.19299936 }, 
+        { "nodeid": 8, "leaf": 0.0494661517 , "cover": 12.8912544 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 15.9300003, "yes": 9, "no": 10, "missing": 10 , "gain": 4.90811062, "cover": 77.2639465, "children": [
+        { "nodeid": 9, "leaf": -0.0271602664 , "cover": 67.0956802 }, 
+        { "nodeid": 10, "leaf": 0.0445764549 , "cover": 10.1682596 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 2.79507351, "cover": 25.9490871, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 36.4399986, "yes": 11, "no": 12, "missing": 12 , "gain": 4.58573484, "cover": 13.7544842, "children": [
+        { "nodeid": 11, "leaf": 0.0673389807 , "cover": 5.18045044 }, 
+        { "nodeid": 12, "leaf": -0.0431576967 , "cover": 8.57403374 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "HDL-C", "split_condition": 0.949999988, "yes": 13, "no": 14, "missing": 14 , "gain": 0.888345242, "cover": 12.194602, "children": [
+        { "nodeid": 13, "leaf": 0.0303835124 , "cover": 6.16553688 }, 
+        { "nodeid": 14, "leaf": 0.0903686285 , "cover": 6.02906513 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 29.7800007, "yes": 1, "no": 2, "missing": 2 , "gain": 3.15009236, "cover": 121.865631, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 1.14999998, "yes": 3, "no": 4, "missing": 4 , "gain": 5.06210899, "cover": 94.065979, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 10, "yes": 7, "no": 8, "missing": 8 , "gain": 4.12877798, "cover": 59.1232071, "children": [
+        { "nodeid": 7, "leaf": 0.0289700013 , "cover": 35.8112144 }, 
+        { "nodeid": 8, "leaf": -0.0241724085 , "cover": 23.3119926 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 5.92999983, "yes": 9, "no": 10, "missing": 10 , "gain": 3.61536598, "cover": 34.9427719, "children": [
+        { "nodeid": 9, "leaf": 0.0224497244 , "cover": 6.96703768 }, 
+        { "nodeid": 10, "leaf": -0.0551956594 , "cover": 27.9757347 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 4.44789219, "cover": 27.799654, "children": [
+      { "nodeid": 5, "depth": 2, "split": "ALT", "split_condition": 28.2900009, "yes": 11, "no": 12, "missing": 12 , "gain": 1.84639299, "cover": 12.7571974, "children": [
+        { "nodeid": 11, "leaf": -0.0545911491 , "cover": 5.43472767 }, 
+        { "nodeid": 12, "leaf": 0.0171515178 , "cover": 7.32246923 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "TP", "split_condition": 76.4400024, "yes": 13, "no": 14, "missing": 14 , "gain": 1.47631407, "cover": 15.0424566, "children": [
+        { "nodeid": 13, "leaf": 0.0957486704 , "cover": 6.66127491 }, 
+        { "nodeid": 14, "leaf": 0.029519761 , "cover": 8.38118172 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 600, "yes": 1, "no": 2, "missing": 2 , "gain": 2.75693154, "cover": 123.157532, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 3.95000005, "yes": 3, "no": 4, "missing": 4 , "gain": 2.97980762, "cover": 116.96978, "children": [
+      { "nodeid": 3, "leaf": -0.0601976998 , "cover": 9.95616913 }, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 35.4000015, "yes": 5, "no": 6, "missing": 6 , "gain": 2.76081371, "cover": 107.013611, "children": [
+        { "nodeid": 5, "leaf": -0.0696401894 , "cover": 5.29372692 }, 
+        { "nodeid": 6, "leaf": -0.00137459522 , "cover": 101.719887 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0533425584 , "cover": 6.18775129 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 34.7000008, "yes": 1, "no": 2, "missing": 2 , "gain": 2.91835189, "cover": 122.228081, "children": [
+    { "nodeid": 1, "leaf": -0.0642121956 , "cover": 6.60537672 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 51.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 3.60231233, "cover": 115.622704, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 28.2900009, "yes": 5, "no": 6, "missing": 6 , "gain": 4.2178278, "cover": 78.9881058, "children": [
+        { "nodeid": 5, "leaf": -0.00585909793 , "cover": 50.1446419 }, 
+        { "nodeid": 6, "leaf": 0.0415248014 , "cover": 28.8434677 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 6.44999981, "yes": 7, "no": 8, "missing": 8 , "gain": 4.80872822, "cover": 36.6345978, "children": [
+        { "nodeid": 7, "leaf": 0.0440580547 , "cover": 7.06223679 }, 
+        { "nodeid": 8, "leaf": -0.0433422551 , "cover": 29.572361 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "HDL-C", "split_condition": 1.38999999, "yes": 1, "no": 2, "missing": 2 , "gain": 3.68456531, "cover": 123.122948, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 70.8899994, "yes": 3, "no": 4, "missing": 4 , "gain": 4.99307585, "cover": 101.461678, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 25.9200001, "yes": 7, "no": 8, "missing": 8 , "gain": 3.99939704, "cover": 50.1127663, "children": [
+        { "nodeid": 7, "leaf": 0.0089143822 , "cover": 37.3925858 }, 
+        { "nodeid": 8, "leaf": 0.0723403841 , "cover": 12.7201786 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 28.5400009, "yes": 9, "no": 10, "missing": 10 , "gain": 3.92579985, "cover": 51.3489113, "children": [
+        { "nodeid": 9, "leaf": -0.0431762971 , "cover": 27.2419243 }, 
+        { "nodeid": 10, "leaf": 0.0113871079 , "cover": 24.1069851 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 51.7999992, "yes": 5, "no": 6, "missing": 6 , "gain": 3.35977888, "cover": 21.6612701, "children": [
+      { "nodeid": 5, "depth": 2, "split": "ALB", "split_condition": 44.4399986, "yes": 11, "no": 12, "missing": 12 , "gain": 2.72587347, "cover": 16.5117416, "children": [
+        { "nodeid": 11, "leaf": -0.0448612608 , "cover": 10.6315479 }, 
+        { "nodeid": 12, "leaf": 0.0349011831 , "cover": 5.88019419 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.104004674 , "cover": 5.14952898 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 20.2999992, "yes": 1, "no": 2, "missing": 2 , "gain": 2.84579754, "cover": 118.197807, "children": [
+    { "nodeid": 1, "leaf": -0.0486518219 , "cover": 7.85731459 }, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 7, "yes": 3, "no": 4, "missing": 4 , "gain": 2.78408933, "cover": 110.340492, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 471.799988, "yes": 5, "no": 6, "missing": 6 , "gain": 3.4270401, "cover": 36.9740105, "children": [
+        { "nodeid": 5, "leaf": -0.029081542 , "cover": 27.9341602 }, 
+        { "nodeid": 6, "leaf": 0.0388620161 , "cover": 9.03984833 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 68.6999969, "yes": 7, "no": 8, "missing": 8 , "gain": 3.62726545, "cover": 73.3664856, "children": [
+        { "nodeid": 7, "leaf": 0.0534253716 , "cover": 23.0438824 }, 
+        { "nodeid": 8, "leaf": 0.00606389437 , "cover": 50.3226051 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "IBIL", "split_condition": 4.53999996, "yes": 1, "no": 2, "missing": 2 , "gain": 3.14835691, "cover": 121.725296, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 61.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 6.23477936, "cover": 14.9046717, "children": [
+      { "nodeid": 3, "leaf": 0.0468179397 , "cover": 5.00988388 }, 
+      { "nodeid": 4, "leaf": -0.0814373717 , "cover": 9.89478779 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALT/AST", "split_condition": 2.19607854, "yes": 5, "no": 6, "missing": 6 , "gain": 3.29377651, "cover": 106.820625, "children": [
+      { "nodeid": 5, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 7, "no": 8, "missing": 8 , "gain": 3.22775173, "cover": 94.5188065, "children": [
+        { "nodeid": 7, "leaf": -0.00941370241 , "cover": 65.2284393 }, 
+        { "nodeid": 8, "leaf": 0.02999942 , "cover": 29.2903709 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 424.299988, "yes": 9, "no": 10, "missing": 10 , "gain": 1.16782522, "cover": 12.3018131, "children": [
+        { "nodeid": 9, "leaf": 0.0247123502 , "cover": 7.2104497 }, 
+        { "nodeid": 10, "leaf": 0.0893557668 , "cover": 5.09136343 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 2.45908666, "cover": 118.320877, "children": [
+    { "nodeid": 1, "leaf": -0.060059756 , "cover": 5.82991123 }, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 590, "yes": 3, "no": 4, "missing": 4 , "gain": 2.00388408, "cover": 112.490959, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 510, "yes": 5, "no": 6, "missing": 6 , "gain": 3.18988228, "cover": 104.943802, "children": [
+        { "nodeid": 5, "leaf": 0.00476323999 , "cover": 91.6286545 }, 
+        { "nodeid": 6, "leaf": -0.0459618382 , "cover": 13.3151512 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0482932925 , "cover": 7.54716015 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 35.2299995, "yes": 1, "no": 2, "missing": 2 , "gain": 3.14663458, "cover": 125.480209, "children": [
+    { "nodeid": 1, "depth": 1, "split": "BMI", "split_condition": 22.0699997, "yes": 3, "no": 4, "missing": 4 , "gain": 3.44699454, "cover": 119.635857, "children": [
+      { "nodeid": 3, "leaf": -0.0787111223 , "cover": 5.36757994 }, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 7.55999994, "yes": 5, "no": 6, "missing": 6 , "gain": 2.79592633, "cover": 114.26828, "children": [
+        { "nodeid": 5, "leaf": -0.0226614457 , "cover": 43.7371597 }, 
+        { "nodeid": 6, "leaf": 0.00921608135 , "cover": 70.5311203 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0626199022 , "cover": 5.844347 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT", "split_condition": 51.7999992, "yes": 1, "no": 2, "missing": 2 , "gain": 2.95717812, "cover": 123.234222, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 34.7000008, "yes": 3, "no": 4, "missing": 4 , "gain": 3.17693233, "cover": 84.4348679, "children": [
+      { "nodeid": 3, "leaf": -0.0539425984 , "cover": 6.42989302 }, 
+      { "nodeid": 4, "depth": 2, "split": "TP", "split_condition": 60.5, "yes": 7, "no": 8, "missing": 8 , "gain": 4.87019634, "cover": 78.0049744, "children": [
+        { "nodeid": 7, "leaf": 0.0849842355 , "cover": 7.73385811 }, 
+        { "nodeid": 8, "leaf": 0.00569758331 , "cover": 70.2711182 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "IBIL", "split_condition": 6.44999981, "yes": 5, "no": 6, "missing": 6 , "gain": 4.01811504, "cover": 38.7993546, "children": [
+      { "nodeid": 5, "leaf": 0.0398539677 , "cover": 7.09767866 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT", "split_condition": 60, "yes": 9, "no": 10, "missing": 10 , "gain": 3.60416555, "cover": 31.7016754, "children": [
+        { "nodeid": 9, "leaf": -0.108844616 , "cover": 5.15310526 }, 
+        { "nodeid": 10, "leaf": -0.0224440303 , "cover": 26.5485706 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT", "split_condition": 136, "yes": 1, "no": 2, "missing": 2 , "gain": 3.96790004, "cover": 116.71656, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 51.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 4.48248863, "cover": 111.584091, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 26.1299992, "yes": 5, "no": 6, "missing": 6 , "gain": 3.85537386, "cover": 81.2641907, "children": [
+        { "nodeid": 5, "leaf": -0.00807349291 , "cover": 40.8975029 }, 
+        { "nodeid": 6, "leaf": 0.0350642875 , "cover": 40.366684 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 32.6899986, "yes": 7, "no": 8, "missing": 8 , "gain": 4.99080849, "cover": 30.3199024, "children": [
+        { "nodeid": 7, "leaf": -0.0614840984 , "cover": 18.8141861 }, 
+        { "nodeid": 8, "leaf": 0.0199442413 , "cover": 11.5057163 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0839058831 , "cover": 5.13246441 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 2.90077591, "cover": 121.563103, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT/AST", "split_condition": 1.92307687, "yes": 3, "no": 4, "missing": 4 , "gain": 3.73781562, "cover": 52.7097778, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT/AST", "split_condition": 0.899999976, "yes": 7, "no": 8, "missing": 8 , "gain": 4.35047197, "cover": 40.9876785, "children": [
+        { "nodeid": 7, "leaf": 0.0356135778 , "cover": 6.83691311 }, 
+        { "nodeid": 8, "leaf": -0.0478051566 , "cover": 34.1507645 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 1.10000002, "yes": 9, "no": 10, "missing": 10 , "gain": 2.62185955, "cover": 11.7221003, "children": [
+        { "nodeid": 9, "leaf": -0.0150333261 , "cover": 6.27721453 }, 
+        { "nodeid": 10, "leaf": 0.0738258436 , "cover": 5.44488573 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 36.6100006, "yes": 5, "no": 6, "missing": 6 , "gain": 3.71999288, "cover": 68.8533325, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 76.4400024, "yes": 11, "no": 12, "missing": 12 , "gain": 2.44265032, "cover": 62.3662796, "children": [
+        { "nodeid": 11, "leaf": 0.0147909494 , "cover": 47.2553558 }, 
+        { "nodeid": 12, "leaf": -0.0301911291 , "cover": 15.11092 }
+      ]}, 
+      { "nodeid": 6, "leaf": 0.0782574937 , "cover": 6.48705149 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 219, "yes": 1, "no": 2, "missing": 2 , "gain": 2.45358753, "cover": 121.787811, "children": [
+    { "nodeid": 1, "leaf": -0.0607425161 , "cover": 5.44487238 }, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 358.399994, "yes": 3, "no": 4, "missing": 4 , "gain": 3.83692312, "cover": 116.342941, "children": [
+      { "nodeid": 3, "depth": 2, "split": "BMI", "split_condition": 32.8699989, "yes": 5, "no": 6, "missing": 6 , "gain": 3.05396652, "cover": 44.7548065, "children": [
+        { "nodeid": 5, "leaf": 0.0119513748 , "cover": 36.5323105 }, 
+        { "nodeid": 6, "leaf": 0.0768333375 , "cover": 8.22249508 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 31.3999996, "yes": 7, "no": 8, "missing": 8 , "gain": 3.09355259, "cover": 71.5881348, "children": [
+        { "nodeid": 7, "leaf": -0.0207558405 , "cover": 60.2407265 }, 
+        { "nodeid": 8, "leaf": 0.0342322253 , "cover": 11.3474073 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "IBIL", "split_condition": 21.2000008, "yes": 1, "no": 2, "missing": 2 , "gain": 3.03906322, "cover": 118.164612, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT/AST", "split_condition": 1.418239, "yes": 3, "no": 4, "missing": 4 , "gain": 2.7143507, "cover": 111.71843, "children": [
+      { "nodeid": 3, "depth": 2, "split": "阿卡波糖片", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 3.31859398, "cover": 55.1020813, "children": [
+        { "nodeid": 5, "leaf": -0.0397835225 , "cover": 34.1330643 }, 
+        { "nodeid": 6, "leaf": 0.0100873299 , "cover": 20.969017 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 24.2199993, "yes": 7, "no": 8, "missing": 8 , "gain": 3.69787312, "cover": 56.6163445, "children": [
+        { "nodeid": 7, "leaf": -0.0546346381 , "cover": 6.75269747 }, 
+        { "nodeid": 8, "leaf": 0.0196033865 , "cover": 49.8636475 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0606179051 , "cover": 6.4461813 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 465, "yes": 1, "no": 2, "missing": 2 , "gain": 4.371099, "cover": 119.047363, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 13.1000004, "yes": 3, "no": 4, "missing": 4 , "gain": 3.04829669, "cover": 88.0750427, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 8.85000038, "yes": 7, "no": 8, "missing": 8 , "gain": 4.16617346, "cover": 66.3021622, "children": [
+        { "nodeid": 7, "leaf": -0.0165185835 , "cover": 43.7127533 }, 
+        { "nodeid": 8, "leaf": 0.0354238562 , "cover": 22.5894089 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 15.9300003, "yes": 9, "no": 10, "missing": 10 , "gain": 3.33184409, "cover": 21.7728786, "children": [
+        { "nodeid": 9, "leaf": -0.0821031556 , "cover": 9.55800247 }, 
+        { "nodeid": 10, "leaf": -0.00496259052 , "cover": 12.2148752 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "HDL-C", "split_condition": 1.28999996, "yes": 5, "no": 6, "missing": 6 , "gain": 4.76577854, "cover": 30.9723244, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 76.3199997, "yes": 11, "no": 12, "missing": 12 , "gain": 3.48572636, "cover": 25.4137363, "children": [
+        { "nodeid": 11, "leaf": 0.0722090602 , "cover": 19.1289406 }, 
+        { "nodeid": 12, "leaf": -0.0114641413 , "cover": 6.28479576 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.0444701761 , "cover": 5.5585885 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 2.74408412, "cover": 118.230515, "children": [
+    { "nodeid": 1, "depth": 1, "split": "BMI", "split_condition": 36.2299995, "yes": 3, "no": 4, "missing": 4 , "gain": 3.5323863, "cover": 50.4035378, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 69.3000031, "yes": 7, "no": 8, "missing": 8 , "gain": 2.53836417, "cover": 42.2055016, "children": [
+        { "nodeid": 7, "leaf": 0.0083915107 , "cover": 34.9021301 }, 
+        { "nodeid": 8, "leaf": -0.0529725067 , "cover": 7.30337048 }
+      ]}, 
+      { "nodeid": 4, "leaf": -0.071684517 , "cover": 8.19803715 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 33.5999985, "yes": 5, "no": 6, "missing": 6 , "gain": 3.36369133, "cover": 67.8269806, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 29.3299999, "yes": 9, "no": 10, "missing": 10 , "gain": 5.37008715, "cover": 57.5668182, "children": [
+        { "nodeid": 9, "leaf": 0.0258972049 , "cover": 39.2097244 }, 
+        { "nodeid": 10, "leaf": -0.0382256024 , "cover": 18.3570919 }
+      ]}, 
+      { "nodeid": 6, "depth": 2, "split": "HDL-C", "split_condition": 0.959999979, "yes": 11, "no": 12, "missing": 12 , "gain": 0.144244671, "cover": 10.2601614, "children": [
+        { "nodeid": 11, "leaf": 0.0388717018 , "cover": 5.12858629 }, 
+        { "nodeid": 12, "leaf": 0.0805547684 , "cover": 5.13157558 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 80.5, "yes": 1, "no": 2, "missing": 2 , "gain": 2.99600744, "cover": 115.35228, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 80, "yes": 3, "no": 4, "missing": 4 , "gain": 4.68107796, "cover": 108.481735, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 53.2000008, "yes": 5, "no": 6, "missing": 6 , "gain": 2.99066949, "cover": 93.0525665, "children": [
+        { "nodeid": 5, "leaf": 0.00713913655 , "cover": 78.0347443 }, 
+        { "nodeid": 6, "leaf": -0.0402480215 , "cover": 15.0178204 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "IBIL", "split_condition": 8.60999966, "yes": 7, "no": 8, "missing": 8 , "gain": 1.79396343, "cover": 15.4291716, "children": [
+        { "nodeid": 7, "leaf": 0.01115778 , "cover": 5.95471573 }, 
+        { "nodeid": 8, "leaf": 0.0820509568 , "cover": 9.47445583 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": -0.0560663231 , "cover": 6.87054348 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 35.0999985, "yes": 1, "no": 2, "missing": 2 , "gain": 2.29075837, "cover": 119.156654, "children": [
+    { "nodeid": 1, "depth": 1, "split": "GLO", "split_condition": 32.5, "yes": 3, "no": 4, "missing": 4 , "gain": 2.86349559, "cover": 112.68074, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 28.5400009, "yes": 5, "no": 6, "missing": 6 , "gain": 2.59005594, "cover": 107.116333, "children": [
+        { "nodeid": 5, "leaf": -0.00365885138 , "cover": 81.7943192 }, 
+        { "nodeid": 6, "leaf": 0.0323702805 , "cover": 25.3220119 }
+      ]}, 
+      { "nodeid": 4, "leaf": -0.0629448444 , "cover": 5.56440496 }
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0583699457 , "cover": 6.47591829 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 25, "yes": 1, "no": 2, "missing": 2 , "gain": 2.55515981, "cover": 117.694244, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 71.0500031, "yes": 3, "no": 4, "missing": 4 , "gain": 2.98318529, "cover": 46.246212, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.51000023, "yes": 7, "no": 8, "missing": 8 , "gain": 4.87220287, "cover": 37.5096779, "children": [
+        { "nodeid": 7, "leaf": -0.0440886728 , "cover": 15.8041182 }, 
+        { "nodeid": 8, "leaf": 0.026949076 , "cover": 21.7055607 }
+      ]}, 
+      { "nodeid": 4, "leaf": -0.0655731186 , "cover": 8.73653126 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 241, "yes": 5, "no": 6, "missing": 6 , "gain": 3.36657882, "cover": 71.4480362, "children": [
+      { "nodeid": 5, "leaf": -0.0546637289 , "cover": 5.6341548 }, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 285, "yes": 9, "no": 10, "missing": 10 , "gain": 6.23374844, "cover": 65.8138809, "children": [
+        { "nodeid": 9, "leaf": 0.116237856 , "cover": 5.15090942 }, 
+        { "nodeid": 10, "leaf": 0.0103241866 , "cover": 60.6629677 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "GLO", "split_condition": 28.5400009, "yes": 1, "no": 2, "missing": 2 , "gain": 2.6520803, "cover": 117.527924, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 50.6300011, "yes": 3, "no": 4, "missing": 4 , "gain": 2.70419431, "cover": 80.2411499, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 41.0099983, "yes": 7, "no": 8, "missing": 8 , "gain": 4.08900642, "cover": 64.0058594, "children": [
+        { "nodeid": 7, "leaf": 0.0226532668 , "cover": 18.0691624 }, 
+        { "nodeid": 8, "leaf": -0.032446038 , "cover": 45.9366951 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 31.0200005, "yes": 9, "no": 10, "missing": 10 , "gain": 1.39246416, "cover": 16.2352962, "children": [
+        { "nodeid": 9, "leaf": 0.048636619 , "cover": 10.2477856 }, 
+        { "nodeid": 10, "leaf": -0.00967692211 , "cover": 5.98751068 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "是否饮酒", "split_condition": 1, "yes": 5, "no": 6, "missing": 6 , "gain": 4.04138756, "cover": 37.2867737, "children": [
+      { "nodeid": 5, "depth": 2, "split": "UA", "split_condition": 347, "yes": 11, "no": 12, "missing": 12 , "gain": 2.79649258, "cover": 27.2481365, "children": [
+        { "nodeid": 11, "leaf": -0.0356615074 , "cover": 10.2475939 }, 
+        { "nodeid": 12, "leaf": 0.0279125329 , "cover": 17.0005436 }
+      ]}, 
+      { "nodeid": 6, "leaf": 0.07545463 , "cover": 10.0386372 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 41.1500015, "yes": 1, "no": 2, "missing": 2 , "gain": 4.44949102, "cover": 109.25695, "children": [
+    { "nodeid": 1, "depth": 1, "split": "HDL-C", "split_condition": 0.819999993, "yes": 3, "no": 4, "missing": 4 , "gain": 3.25743937, "cover": 24.0101185, "children": [
+      { "nodeid": 3, "leaf": -0.0274266135 , "cover": 6.37344599 }, 
+      { "nodeid": 4, "depth": 2, "split": "ALB", "split_condition": 37.0999985, "yes": 7, "no": 8, "missing": 8 , "gain": 1.88809156, "cover": 17.636673, "children": [
+        { "nodeid": 7, "leaf": 0.0100452537 , "cover": 7.09371328 }, 
+        { "nodeid": 8, "leaf": 0.077215068 , "cover": 10.5429592 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 39.8699989, "yes": 5, "no": 6, "missing": 6 , "gain": 2.26851225, "cover": 85.2468262, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 29.3299999, "yes": 9, "no": 10, "missing": 10 , "gain": 2.22540784, "cover": 79.2284012, "children": [
+        { "nodeid": 9, "leaf": -0.00573668536 , "cover": 42.1142349 }, 
+        { "nodeid": 10, "leaf": -0.0392493159 , "cover": 37.1141624 }
+      ]}, 
+      { "nodeid": 6, "leaf": 0.0379358642 , "cover": 6.01842785 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 33.75, "yes": 1, "no": 2, "missing": 2 , "gain": 3.82217479, "cover": 116.433731, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 68.0999985, "yes": 3, "no": 4, "missing": 4 , "gain": 4.22130346, "cover": 94.1841431, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 7.55999994, "yes": 7, "no": 8, "missing": 8 , "gain": 4.03405476, "cover": 36.2941628, "children": [
+        { "nodeid": 7, "leaf": -0.0139182582 , "cover": 18.0822105 }, 
+        { "nodeid": 8, "leaf": 0.0512867272 , "cover": 18.2119541 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 31.5599995, "yes": 9, "no": 10, "missing": 10 , "gain": 3.7254405, "cover": 57.8899841, "children": [
+        { "nodeid": 9, "leaf": -0.0136201521 , "cover": 51.1115494 }, 
+        { "nodeid": 10, "leaf": -0.0883604512 , "cover": 6.77843189 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "TP", "split_condition": 67.6999969, "yes": 5, "no": 6, "missing": 6 , "gain": 2.91175365, "cover": 22.2495842, "children": [
+      { "nodeid": 5, "leaf": -0.00813233107 , "cover": 8.37643051 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALB", "split_condition": 47.7999992, "yes": 11, "no": 12, "missing": 12 , "gain": 1.963624, "cover": 13.8731546, "children": [
+        { "nodeid": 11, "leaf": 0.0917839259 , "cover": 8.59695911 }, 
+        { "nodeid": 12, "leaf": 0.0129891904 , "cover": 5.27619505 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 293, "yes": 1, "no": 2, "missing": 2 , "gain": 2.09491086, "cover": 111.013519, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 19, "yes": 3, "no": 4, "missing": 4 , "gain": 2.37993526, "cover": 18.8437901, "children": [
+      { "nodeid": 3, "leaf": -0.00980411656 , "cover": 8.12827969 }, 
+      { "nodeid": 4, "depth": 2, "split": "ALT/AST", "split_condition": 1.64953268, "yes": 7, "no": 8, "missing": 8 , "gain": 1.81418991, "cover": 10.7155104, "children": [
+        { "nodeid": 7, "leaf": 0.0952574462 , "cover": 5.46165419 }, 
+        { "nodeid": 8, "leaf": 0.0131757529 , "cover": 5.25385618 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "GLO", "split_condition": 31.8299999, "yes": 5, "no": 6, "missing": 6 , "gain": 2.42900944, "cover": 92.1697235, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 78.5999985, "yes": 9, "no": 10, "missing": 10 , "gain": 7.96282911, "cover": 82.4964981, "children": [
+        { "nodeid": 9, "leaf": -0.00217640214 , "cover": 77.4726028 }, 
+        { "nodeid": 10, "leaf": -0.12156707 , "cover": 5.02389383 }
+      ]}, 
+      { "nodeid": 6, "leaf": 0.0398738161 , "cover": 9.67323017 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "盐酸二甲双胍片", "split_condition": 1, "yes": 1, "no": 2, "missing": 2 , "gain": 1.98911119, "cover": 117.834335, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 28.2900009, "yes": 3, "no": 4, "missing": 4 , "gain": 2.85566807, "cover": 51.1422234, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALB", "split_condition": 43.5999985, "yes": 7, "no": 8, "missing": 8 , "gain": 2.52181745, "cover": 22.9871521, "children": [
+        { "nodeid": 7, "leaf": 0.00151128322 , "cover": 11.5608482 }, 
+        { "nodeid": 8, "leaf": -0.0632515699 , "cover": 11.4263039 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT", "split_condition": 39, "yes": 9, "no": 10, "missing": 10 , "gain": 7.22429228, "cover": 28.1550713, "children": [
+        { "nodeid": 9, "leaf": 0.0948570296 , "cover": 7.1265564 }, 
+        { "nodeid": 10, "leaf": -0.0156154474 , "cover": 21.0285168 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "ALB", "split_condition": 38.0999985, "yes": 5, "no": 6, "missing": 6 , "gain": 3.31189346, "cover": 66.6921082, "children": [
+      { "nodeid": 5, "leaf": -0.035297107 , "cover": 8.67990685 }, 
+      { "nodeid": 6, "depth": 2, "split": "UA", "split_condition": 418, "yes": 11, "no": 12, "missing": 12 , "gain": 3.23248816, "cover": 58.0122032, "children": [
+        { "nodeid": 11, "leaf": 0.0478025675 , "cover": 33.634697 }, 
+        { "nodeid": 12, "leaf": 0.000259545894 , "cover": 24.3775043 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 74.1600037, "yes": 1, "no": 2, "missing": 2 , "gain": 2.28026056, "cover": 114.372559, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 50.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 2.42533875, "cover": 77.926384, "children": [
+      { "nodeid": 3, "depth": 2, "split": "IBIL", "split_condition": 15, "yes": 7, "no": 8, "missing": 8 , "gain": 3.23876572, "cover": 66.7324905, "children": [
+        { "nodeid": 7, "leaf": -0.00405434705 , "cover": 59.1740494 }, 
+        { "nodeid": 8, "leaf": 0.0617091842 , "cover": 7.55844021 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 26.4200001, "yes": 9, "no": 10, "missing": 10 , "gain": 1.09094071, "cover": 11.1938963, "children": [
+        { "nodeid": 9, "leaf": 0.013832151 , "cover": 5.01105356 }, 
+        { "nodeid": 10, "leaf": 0.0780224204 , "cover": 6.18284225 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "UA", "split_condition": 510, "yes": 5, "no": 6, "missing": 6 , "gain": 2.17632961, "cover": 36.4461708, "children": [
+      { "nodeid": 5, "depth": 2, "split": "BMI", "split_condition": 27.3199997, "yes": 11, "no": 12, "missing": 12 , "gain": 2.70048785, "cover": 28.2115669, "children": [
+        { "nodeid": 11, "leaf": -0.042228803 , "cover": 10.5156116 }, 
+        { "nodeid": 12, "leaf": 0.0193500593 , "cover": 17.6959553 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.0603678636 , "cover": 8.23460579 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 1.64853823, "cover": 119.505821, "children": [
+    { "nodeid": 1, "leaf": -0.0577718876 , "cover": 5.50872231 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALB", "split_condition": 52.9300003, "yes": 3, "no": 4, "missing": 4 , "gain": 1.57104111, "cover": 113.997101, "children": [
+      { "nodeid": 3, "depth": 2, "split": "HDL-C", "split_condition": 0.720000029, "yes": 5, "no": 6, "missing": 6 , "gain": 1.78440201, "cover": 102.109947, "children": [
+        { "nodeid": 5, "leaf": -0.0489130579 , "cover": 9.58607006 }, 
+        { "nodeid": 6, "leaf": -0.00547574367 , "cover": 92.52388 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "ALT", "split_condition": 33.2999992, "yes": 7, "no": 8, "missing": 8 , "gain": 2.05655622, "cover": 11.8871527, "children": [
+        { "nodeid": 7, "leaf": -0.0110368719 , "cover": 6.48549509 }, 
+        { "nodeid": 8, "leaf": 0.0674310923 , "cover": 5.40165758 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "UA", "split_condition": 600, "yes": 1, "no": 2, "missing": 2 , "gain": 1.56357801, "cover": 118.508797, "children": [
+    { "nodeid": 1, "depth": 1, "split": "TP", "split_condition": 70.8899994, "yes": 3, "no": 4, "missing": 4 , "gain": 1.73138916, "cover": 111.996277, "children": [
+      { "nodeid": 3, "depth": 2, "split": "TP", "split_condition": 69.6999969, "yes": 5, "no": 6, "missing": 6 , "gain": 3.2982502, "cover": 56.6488342, "children": [
+        { "nodeid": 5, "leaf": -0.00615047337 , "cover": 49.3316231 }, 
+        { "nodeid": 6, "leaf": 0.0618393309 , "cover": 7.31721067 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 24.7000008, "yes": 7, "no": 8, "missing": 8 , "gain": 3.0350666, "cover": 55.3474426, "children": [
+        { "nodeid": 7, "leaf": -0.0763030425 , "cover": 7.50693941 }, 
+        { "nodeid": 8, "leaf": -0.01111216 , "cover": 47.8405037 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0384290293 , "cover": 6.51252079 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 2.44271755, "cover": 115.309982, "children": [
+    { "nodeid": 1, "leaf": -0.0640218928 , "cover": 5.12657833 }, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 29.3299999, "yes": 3, "no": 4, "missing": 4 , "gain": 2.50836921, "cover": 110.183403, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT/AST", "split_condition": 1.21875, "yes": 5, "no": 6, "missing": 6 , "gain": 2.4002862, "cover": 55.4243202, "children": [
+        { "nodeid": 5, "leaf": -0.0101268347 , "cover": 21.5456409 }, 
+        { "nodeid": 6, "leaf": 0.0319506042 , "cover": 33.8786774 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 386, "yes": 7, "no": 8, "missing": 8 , "gain": 4.00157356, "cover": 54.7590828, "children": [
+        { "nodeid": 7, "leaf": -0.0443879105 , "cover": 23.5989628 }, 
+        { "nodeid": 8, "leaf": 0.00932623073 , "cover": 31.1601219 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "TP", "split_condition": 72.9000015, "yes": 1, "no": 2, "missing": 2 , "gain": 1.99904275, "cover": 116.91819, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 50.7999992, "yes": 3, "no": 4, "missing": 4 , "gain": 2.54586363, "cover": 73.2019501, "children": [
+      { "nodeid": 3, "depth": 2, "split": "GLO", "split_condition": 23, "yes": 7, "no": 8, "missing": 8 , "gain": 1.91295648, "cover": 63.4866409, "children": [
+        { "nodeid": 7, "leaf": -0.0224015117 , "cover": 19.876543 }, 
+        { "nodeid": 8, "leaf": 0.0142810931 , "cover": 43.610096 }
+      ]}, 
+      { "nodeid": 4, "leaf": 0.0553722493 , "cover": 9.71531105 }
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "HDL-C", "split_condition": 0.879999995, "yes": 5, "no": 6, "missing": 6 , "gain": 3.03006172, "cover": 43.7162437, "children": [
+      { "nodeid": 5, "leaf": -0.0631315559 , "cover": 9.62051105 }, 
+      { "nodeid": 6, "depth": 2, "split": "ALT", "split_condition": 53.2000008, "yes": 9, "no": 10, "missing": 10 , "gain": 3.18749475, "cover": 34.0957336, "children": [
+        { "nodeid": 9, "leaf": 0.0230322964 , "cover": 20.2200928 }, 
+        { "nodeid": 10, "leaf": -0.0373438261 , "cover": 13.875639 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "IBIL", "split_condition": 21.2000008, "yes": 1, "no": 2, "missing": 2 , "gain": 2.24150681, "cover": 112.081215, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 13.1000004, "yes": 3, "no": 4, "missing": 4 , "gain": 2.73188853, "cover": 105.950249, "children": [
+      { "nodeid": 3, "depth": 2, "split": "UA", "split_condition": 427, "yes": 5, "no": 6, "missing": 6 , "gain": 1.86146867, "cover": 86.0595856, "children": [
+        { "nodeid": 5, "leaf": -0.00795495976 , "cover": 56.4498863 }, 
+        { "nodeid": 6, "leaf": 0.0225819834 , "cover": 29.6096973 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "GLO", "split_condition": 27.4200001, "yes": 7, "no": 8, "missing": 8 , "gain": 2.13046455, "cover": 19.8906651, "children": [
+        { "nodeid": 7, "leaf": -0.0114341574 , "cover": 12.8772573 }, 
+        { "nodeid": 8, "leaf": -0.07821282 , "cover": 7.01340771 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0527536571 , "cover": 6.13096142 }
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT", "split_condition": 11.3000002, "yes": 1, "no": 2, "missing": 2 , "gain": 3.24395347, "cover": 109.657227, "children": [
+    { "nodeid": 1, "leaf": 0.0618336312 , "cover": 7.45459509 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 91.0800018, "yes": 3, "no": 4, "missing": 4 , "gain": 2.43537188, "cover": 102.202637, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 54, "yes": 5, "no": 6, "missing": 6 , "gain": 2.21008039, "cover": 90.2147217, "children": [
+        { "nodeid": 5, "leaf": 0.000121112738 , "cover": 70.3803482 }, 
+        { "nodeid": 6, "leaf": -0.0369555466 , "cover": 19.8343735 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "UA", "split_condition": 436.600006, "yes": 7, "no": 8, "missing": 8 , "gain": 2.10044241, "cover": 11.9879141, "children": [
+        { "nodeid": 7, "leaf": 0.00020124724 , "cover": 6.91057014 }, 
+        { "nodeid": 8, "leaf": 0.0808260515 , "cover": 5.07734442 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 22.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 2.37783051, "cover": 117.385429, "children": [
+    { "nodeid": 1, "leaf": -0.0622533448 , "cover": 5.58230019 }, 
+    { "nodeid": 2, "depth": 1, "split": "ALT", "split_condition": 22, "yes": 3, "no": 4, "missing": 4 , "gain": 1.76129973, "cover": 111.803131, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT/AST", "split_condition": 0.70588237, "yes": 5, "no": 6, "missing": 6 , "gain": 3.53515291, "cover": 32.4258385, "children": [
+        { "nodeid": 5, "leaf": 0.0494863838 , "cover": 5.21965027 }, 
+        { "nodeid": 6, "leaf": -0.0342455655 , "cover": 27.2061901 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 29.1399994, "yes": 7, "no": 8, "missing": 8 , "gain": 2.48575926, "cover": 79.3772888, "children": [
+        { "nodeid": 7, "leaf": 0.0265551843 , "cover": 36.2923546 }, 
+        { "nodeid": 8, "leaf": -0.00856260303 , "cover": 43.084938 }
+      ]}
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "BMI", "split_condition": 33.0699997, "yes": 1, "no": 2, "missing": 2 , "gain": 2.31558585, "cover": 112.18322, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALT", "split_condition": 53.2000008, "yes": 3, "no": 4, "missing": 4 , "gain": 2.35574961, "cover": 86.7882462, "children": [
+      { "nodeid": 3, "depth": 2, "split": "ALT", "split_condition": 42.5, "yes": 7, "no": 8, "missing": 8 , "gain": 3.82791114, "cover": 66.6543121, "children": [
+        { "nodeid": 7, "leaf": -0.00707622711 , "cover": 58.823082 }, 
+        { "nodeid": 8, "leaf": 0.0634568557 , "cover": 7.83122873 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 0.930000007, "yes": 9, "no": 10, "missing": 10 , "gain": 3.02866983, "cover": 20.133934, "children": [
+        { "nodeid": 9, "leaf": 0.0167221837 , "cover": 6.76610947 }, 
+        { "nodeid": 10, "leaf": -0.0623781793 , "cover": 13.3678246 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "BMI", "split_condition": 38.2000008, "yes": 5, "no": 6, "missing": 6 , "gain": 2.35062599, "cover": 25.3949776, "children": [
+      { "nodeid": 5, "depth": 2, "split": "ALB", "split_condition": 48.4900017, "yes": 11, "no": 12, "missing": 12 , "gain": 1.2150526, "cover": 16.0932617, "children": [
+        { "nodeid": 11, "leaf": 0.0666769072 , "cover": 10.7744694 }, 
+        { "nodeid": 12, "leaf": 0.00751671055 , "cover": 5.31879187 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.0126360059 , "cover": 9.3017168 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALB", "split_condition": 51.2999992, "yes": 1, "no": 2, "missing": 2 , "gain": 3.66710353, "cover": 112.883057, "children": [
+    { "nodeid": 1, "depth": 1, "split": "IBIL", "split_condition": 3.25999999, "yes": 3, "no": 4, "missing": 4 , "gain": 2.57808495, "cover": 96.632431, "children": [
+      { "nodeid": 3, "leaf": -0.0653623119 , "cover": 5.65532446 }, 
+      { "nodeid": 4, "depth": 2, "split": "HDL-C", "split_condition": 0.99000001, "yes": 7, "no": 8, "missing": 8 , "gain": 1.76193452, "cover": 90.9771042, "children": [
+        { "nodeid": 7, "leaf": -0.0178503748 , "cover": 35.8656998 }, 
+        { "nodeid": 8, "leaf": 0.0102916546 , "cover": 55.1114006 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "depth": 1, "split": "HDL-C", "split_condition": 1.13999999, "yes": 5, "no": 6, "missing": 6 , "gain": 2.13806295, "cover": 16.2506313, "children": [
+      { "nodeid": 5, "depth": 2, "split": "TP", "split_condition": 72.1999969, "yes": 9, "no": 10, "missing": 10 , "gain": 0.176420212, "cover": 10.4602194, "children": [
+        { "nodeid": 9, "leaf": 0.0863006786 , "cover": 5.3010807 }, 
+        { "nodeid": 10, "leaf": 0.0415348783 , "cover": 5.15913868 }
+      ]}, 
+      { "nodeid": 6, "leaf": -0.00410546688 , "cover": 5.79041147 }
+    ]}
+  ]},
+  { "nodeid": 0, "depth": 0, "split": "ALT", "split_condition": 136, "yes": 1, "no": 2, "missing": 2 , "gain": 1.8123349, "cover": 113.065224, "children": [
+    { "nodeid": 1, "depth": 1, "split": "ALB", "split_condition": 49.8300018, "yes": 3, "no": 4, "missing": 4 , "gain": 2.14144826, "cover": 108.028374, "children": [
+      { "nodeid": 3, "depth": 2, "split": "BMI", "split_condition": 31.8899994, "yes": 5, "no": 6, "missing": 6 , "gain": 3.71105886, "cover": 85.2542648, "children": [
+        { "nodeid": 5, "leaf": -0.0122096734 , "cover": 62.7695465 }, 
+        { "nodeid": 6, "leaf": 0.0342893116 , "cover": 22.4847164 }
+      ]}, 
+      { "nodeid": 4, "depth": 2, "split": "BMI", "split_condition": 31.1200008, "yes": 7, "no": 8, "missing": 8 , "gain": 1.7771666, "cover": 22.7741146, "children": [
+        { "nodeid": 7, "leaf": -0.0124664195 , "cover": 15.3498592 }, 
+        { "nodeid": 8, "leaf": -0.0707049668 , "cover": 7.42425632 }
+      ]}
+    ]}, 
+    { "nodeid": 2, "leaf": 0.0492268614 , "cover": 5.03684473 }
+  ]}
+];
+
+const FEATURES = [
+  {key:'BMI',             label:'BMI',             unit:'kg/m²',  type:'num', def:28,  min:15,   max:55,  step:0.1},
+  {key:'是否饮酒',        label:'Alcohol drinking',              type:'sel', def:'0'},
+  {key:'HDL-C',           label:'HDL-C',           unit:'mmol/L', type:'num', def:1.0,  min:0.3,  max:3.5, step:0.01},
+  {key:'ALT',             label:'ALT',             unit:'U/L',    type:'num', def:30,   min:5,    max:400, step:1},
+  {key:'TP',              label:'Total protein',   unit:'g/L',    type:'num', def:70,   min:40,   max:110, step:0.1},
+  {key:'IBIL',            label:'Indirect bilirubin', unit:'µmol/L', type:'num', def:8,  min:0,    max:40,  step:0.1},
+  {key:'UA',              label:'Uric acid',       unit:'µmol/L', type:'num', def:420,  min:100,  max:900, step:1},
+  {key:'ALB',             label:'Albumin',         unit:'g/L',    type:'num', def:45,   min:25,   max:65,  step:0.1},
+  {key:'GLO',             label:'Globulin',        unit:'g/L',    type:'num', def:25,   min:10,   max:60,  step:0.1},
+  {key:'盐酸二甲双胍片',  label:'Metformin use',                 type:'sel', def:'0'},
+  {key:'阿卡波糖片',      label:'Acarbose use',                  type:'sel', def:'0'},
+  {key:'ALT/AST',         label:'ALT/AST ratio',                 type:'num', def:1.1,  min:0.2,  max:4.0, step:0.01}
+];
+
+const BASE_SCORE = 0.6864865;          // model base_score (probability)
+const BASE_LOGIT = Math.log(BASE_SCORE / (1 - BASE_SCORE)); // 0.7835
+const BIAS_SHOW  = 0.779423;           // SHAP intercept shown by xgboost predcontrib
+const CUTOFF     = 0.667803;           // Youden cutoff
+
+// Pre-build nodeid -> node maps once (used by prediction & SHAP)
+const TREE_MAPS = [];
+for (const t of MODEL) {
+  const map = new Map();
+  (function walk(n){ map.set(n.nodeid, n); if (n.children) n.children.forEach(walk); })(t);
+  TREE_MAPS.push(map);
+}
+const FEATURE_IDX = {};
+FEATURES.forEach((f, i) => FEATURE_IDX[f.key] = i);
+
+// ------------------- prediction -------------------
+function treeScore(map, tree, x) {
+  if (tree.leaf !== undefined) return Math.fround(tree.leaf);
+  const v = x[tree.split];
+  let next;
+  if (v === null || v === undefined || Number.isNaN(v)) next = tree.missing;
+  else next = (Math.fround(v) < Math.fround(tree.split_condition)) ? tree.yes : tree.no;
+  return treeScore(map, map.get(next), x);
+}
+function predict(x) {
+  let s = 0;
+  for (let i = 0; i < MODEL.length; i++) s = Math.fround(s + treeScore(TREE_MAPS[i], MODEL[i], x));
+  const logit = s + BASE_LOGIT;
+  return { logit: logit, prob: 1 / (1 + Math.exp(-logit)) };
+}
+
+// ------------------- exact TreeSHAP -------------------
+function extendPath(path, u, z, o, fi) {
+  path[u].featureIndex = fi; path[u].zeroFraction = z; path[u].oneFraction = o;
+  path[u].pweight = (u === 0 ? 1 : 0);
+  for (let i = u - 1; i >= 0; i--) {
+    path[i + 1].pweight += o * path[i].pweight * (i + 1) / (u + 1);
+    path[i].pweight = z * path[i].pweight * (u - i) / (u + 1);
+  }
+}
+function unwindPath(path, u, pi) {
+  const o = path[pi].oneFraction, z = path[pi].zeroFraction;
+  let nop = path[u].pweight;
+  for (let i = u - 1; i >= 0; --i) {
+    if (o !== 0) {
+      const tmp = path[i].pweight;
+      path[i].pweight = nop * (u + 1) / ((i + 1) * o);
+      nop = tmp - path[i].pweight * z * (u - i) / (u + 1);
+    } else {
+      path[i].pweight = (path[i].pweight * (u + 1)) / (z * (u - i));
+    }
+  }
+  for (let i = pi; i < u; ++i) {
+    path[i].featureIndex = path[i + 1].featureIndex;
+    path[i].zeroFraction = path[i + 1].zeroFraction;
+    path[i].oneFraction  = path[i + 1].oneFraction;
+  }
+}
+function unwoundPathSum(path, u, pi) {
+  const o = path[pi].oneFraction, z = path[pi].zeroFraction;
+  let nop = path[u].pweight, total = 0;
+  for (let i = u - 1; i >= 0; --i) {
+    if (o !== 0) {
+      const tmp = nop * (u + 1) / ((i + 1) * o);
+      total += tmp;
+      nop = path[i].pweight - tmp * z * (u - i) / (u + 1);
+    } else {
+      total += (path[i].pweight / z) / ((u - i) / (u + 1));
+    }
+  }
+  return total;
+}
+function treeShap(tree, map, xv) {
+  const M = FEATURES.length;
+  const phi = new Array(M).fill(0);
+  function rec(nodeIdx, u, parentPath, pz, po, pf, cond, condFeat, condFrac) {
+    if (condFrac === 0) return;
+    const path = [];
+    for (let i = 0; i < u + 2; i++) {
+      path.push(i < parentPath.length
+        ? {featureIndex: parentPath[i].featureIndex, zeroFraction: parentPath[i].zeroFraction, oneFraction: parentPath[i].oneFraction, pweight: parentPath[i].pweight}
+        : {featureIndex: -1, zeroFraction: 0, oneFraction: 0, pweight: 0});
+    }
+    if (cond === 0 || condFeat !== pf) extendPath(path, u, pz, po, pf);
+    const node = map.get(nodeIdx);
+    if (node.leaf !== undefined) {
+      for (let i = 1; i <= u; i++) {
+        const w = unwoundPathSum(path, u, i);
+        const el = path[i];
+        phi[el.featureIndex] += w * (el.oneFraction - el.zeroFraction) * Math.fround(node.leaf) * condFrac;
+      }
+      return;
+    }
+    const v = xv[FEATURE_IDX[node.split]];
+    let hot;
+    if (v === null || v === undefined || Number.isNaN(v)) hot = node.missing;
+    else hot = (Math.fround(v) < Math.fround(node.split_condition)) ? node.yes : node.no;
+    const cold = (hot === node.yes) ? node.no : node.yes;
+    const w = Math.fround(node.cover);
+    const hzf = Math.fround(map.get(hot).cover) / w;
+    const czf = Math.fround(map.get(cold).cover) / w;
+    let iz = 1, io = 1, pi = 0;
+    for (; pi <= u; ++pi) if (path[pi].featureIndex === FEATURE_IDX[node.split]) break;
+    if (pi !== u + 1) {
+      iz = path[pi].zeroFraction; io = path[pi].oneFraction;
+      unwindPath(path, u, pi); u -= 1;
+    }
+    rec(hot,  u + 1, path, hzf * iz, io, FEATURE_IDX[node.split], cond, condFeat, condFrac);
+    rec(cold, u + 1, path, czf * iz, 0,  FEATURE_IDX[node.split], cond, condFeat, condFrac);
+  }
+  const init = [];
+  for (let i = 0; i <= 40; i++) init.push({featureIndex: -1, zeroFraction: 0, oneFraction: 0, pweight: 0});
+  rec(0, 0, init, 1, 1, -1, 0, 0, 1);
+  return phi;
+}
+function shapContributions(xv) {
+  const M = FEATURES.length;
+  const phi = new Array(M).fill(0);
+  for (let i = 0; i < MODEL.length; i++) {
+    const p = treeShap(MODEL[i], TREE_MAPS[i], xv);
+    for (let j = 0; j < M; j++) phi[j] += p[j];
+  }
+  return phi;
+}
+
+// ------------------- UI -------------------
+const inputEls = {};
+function buildInputs() {
+  const wrap = document.getElementById('inputs');
+  let groups = [['Demographics &amp; lifestyle', [0,1]], ['Biochemistry', [2,3,4,5,6,7,8,11]], ['Medications', [9,10]]];
+  let html = '';
+  for (const [gname, inds] of groups) {
+    html += '<div class="grp"><div class="grp-title">' + gname + '</div>';
+    for (const i of inds) {
+      const f = FEATURES[i];
+      html += '<div class="field"><label>' + f.label + (f.unit ? '<span class="unit">' + f.unit + '</span>' : '') + '</label>';
+      if (f.type === 'sel') {
+        html += '<select id="in_' + i + '"><option value="0"' + (f.def === '0' ? ' selected' : '') + '>No</option><option value="1"' + (f.def === '1' ? ' selected' : '') + '>Yes</option></select>';
+      } else {
+        html += '<input type="number" id="in_' + i + '" value="' + f.def + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  wrap.innerHTML = html;
+  FEATURES.forEach((f, i) => { inputEls[i] = document.getElementById('in_' + i); inputEls[i].addEventListener('input', calculate); });
+}
+
+function readInputs() {
+  const x = {};
+  FEATURES.forEach((f, i) => {
+    const el = inputEls[i];
+    const v = (f.type === 'sel') ? parseInt(el.value, 10) : parseFloat(el.value);
+    x[f.key] = v;
+  });
+  return x;
+}
+
+function riskLabel(p) {
+  if (p < 0.3)  return {t: 'Low risk',     c: 'var(--low)'};
+  if (p < 0.7)  return {t: 'Moderate risk', c: 'var(--mod)'};
+  return {t: 'High risk', c: 'var(--high)'};
+}
+
+function calculate() {
+  const allFilled = FEATURES.every((f, i) => {
+    const v = inputEls[i].value;
+    return v !== '' && !Number.isNaN(parseFloat(v));
+  });
+  if (!allFilled) {
+    document.getElementById('probNum').textContent = '\u2013';
+    document.getElementById('riskLabel').textContent = 'Please fill all fields';
+    document.getElementById('riskLabel').style.color = 'var(--high)';
+    document.getElementById('decision').textContent = '\u2013';
+    document.getElementById('shapChart').innerHTML = '';
+    document.getElementById('baselineBox').innerHTML = '';
+    return;
+  }
+  const x = readInputs();
+  const xv = FEATURES.map(f => x[f.key]);
+  const r = predict(x);
+  const rl = riskLabel(r.prob);
+  const pct = (r.prob * 100).toFixed(1) + '%';
+  const logit = r.logit.toFixed(3);
+  document.getElementById('probNum').textContent = pct;
+  document.getElementById('probNum').style.color = rl.c;
+  document.getElementById('riskLabel').textContent = rl.t;
+  document.getElementById('riskLabel').style.color = rl.c;
+  document.getElementById('decision').textContent = r.prob >= CUTOFF ? 'MASLD positive' : 'MASLD negative';
+  document.getElementById('decision').style.color = r.prob >= CUTOFF ? 'var(--high)' : 'var(--low)';
+
+  // SHAP
+  const phi = shapContributions(xv);
+  const rows = phi.map((v, i) => ({v: v, label: FEATURES[i].label, key: FEATURES[i].key})).filter(d => Math.abs(d.v) > 1e-9);
+  rows.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+  const maxAbs = Math.max(1e-9, ...rows.map(d => Math.abs(d.v)));
+  let html = '';
+  for (const d of rows) {
+    const w = Math.min(50, Math.abs(d.v) / maxAbs * 50);
+    const cls = d.v >= 0 ? 'pos' : 'neg';
+    html += '<div class="shap-row">'
+          + '<div class="shap-label">' + d.label + '</div>'
+          + '<div class="shap-track"><div class="shap-zero"></div><div class="shap-bar ' + cls + '" style="width:' + w + '%;"></div></div>'
+          + '<div class="shap-val">' + (d.v >= 0 ? '+' : '') + d.v.toFixed(3) + '</div>'
+          + '</div>';
+  }
+  document.getElementById('shapChart').innerHTML = html || '<div class="note">No contributions</div>';
+  const sumPhi = phi.reduce((a, b) => a + b, 0);
+  document.getElementById('baselineBox').innerHTML =
+    '\u03a3 SHAP = <b>' + sumPhi.toFixed(4) + '</b> + baseline ' + BIAS_SHOW.toFixed(4)
+    + ' = log-odds <b>' + (sumPhi + BIAS_SHOW).toFixed(4) + '</b>'
+    + ' &rarr; probability <b>' + (100 / (1 + Math.exp(-(sumPhi + BIAS_SHOW)))).toFixed(1) + '%</b>'
+    + ' <span style="color:var(--muted)">(rounded)</span>';
+}
+
+function setExample(ex) {
+  FEATURES.forEach((f, i) => {
+    const v = ex[f.key];
+    if (v === undefined) return;
+    if (f.type === 'sel') inputEls[i].value = String(v);
+    else inputEls[i].value = v;
+  });
+  calculate();
+}
+
+document.getElementById('btnHigh').addEventListener('click', () => setExample({BMI:32,'是否饮酒':1,'HDL-C':0.9,ALT:60,TP:75,IBIL:12,UA:500,ALB:40,GLO:35,'盐酸二甲双胍片':1,'阿卡波糖片':1,'ALT/AST':1.5}));
+document.getElementById('btnLow').addEventListener('click', () => setExample({BMI:22,'是否饮酒':0,'HDL-C':1.4,ALT:20,TP:65,IBIL:6,UA:300,ALB:48,GLO:20,'盐酸二甲双胍片':0,'阿卡波糖片':0,'ALT/AST':0.9}));
+
+buildInputs();
+calculate();
+</script>
+</body>
+</html>
